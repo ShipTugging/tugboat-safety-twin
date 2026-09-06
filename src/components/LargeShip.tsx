@@ -2,12 +2,16 @@ import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
+import { TimeOfDay } from '../types/maritime';
+
 interface LargeShipProps {
   position: [number, number, number];
   shipSpeedKnots: number;
+  timeOfDay?: TimeOfDay;
 }
 
-export const LargeShip: React.FC<LargeShipProps> = ({ position, shipSpeedKnots }) => {
+export const LargeShip: React.FC<LargeShipProps> = ({ position, shipSpeedKnots, timeOfDay = 'day' }) => {
+  const isNight = timeOfDay === 'night';
   const radarMainRef = useRef<THREE.Group>(null);
   const radarSubRef = useRef<THREE.Group>(null);
   const propRef = useRef<THREE.Group>(null);
@@ -248,6 +252,21 @@ export const LargeShip: React.FC<LargeShipProps> = ({ position, shipSpeedKnots }
               <meshStandardMaterial color="#ea580c" roughness={0.4} />
             </mesh>
           ))}
+
+          {/* Port/Starboard Bridge Wing Navigation Lanterns */}
+          <mesh position={[-9.5, 0.4, 0]}>
+            <sphereGeometry args={[0.2, 8, 8]} />
+            <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={isNight ? 5 : 2} />
+          </mesh>
+          <mesh position={[9.5, 0.4, 0]}>
+            <sphereGeometry args={[0.2, 8, 8]} />
+            <meshStandardMaterial color="#22c55e" emissive="#22c55e" emissiveIntensity={isNight ? 5 : 2} />
+          </mesh>
+
+          {/* Night Bridge Interior Glow */}
+          {isNight && (
+            <pointLight position={[0, 0.4, 0.5]} color="#00f0ff" intensity={3.5} distance={15} />
+          )}
         </group>
 
         {/* Enclosed Orange Davit-Launched Capsule Lifeboats */}
@@ -322,6 +341,17 @@ export const LargeShip: React.FC<LargeShipProps> = ({ position, shipSpeedKnots }
           <meshStandardMaterial color="#facc15" metalness={0.8} roughness={0.2} />
         </mesh>
         <pointLight color="#facc15" intensity={2.0} distance={8} />
+      </group>
+
+      {/* Transom Stern White Navigation Light (COLREGs Rule 23) */}
+      <group position={[0, 4.2, -35.2]}>
+        <mesh>
+          <sphereGeometry args={[0.22, 8, 8]} />
+          <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={isNight ? 5 : 2} />
+        </mesh>
+        {isNight && (
+          <pointLight color="#ffffff" intensity={2.5} distance={15} />
+        )}
       </group>
 
       {/* 5-Blade Bronze Propeller & Rudder Horn */}

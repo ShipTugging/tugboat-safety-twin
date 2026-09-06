@@ -1,10 +1,11 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { SimulationParams, CameraMode } from './types/maritime';
+import { SimulationParams, CameraMode, TimeOfDay } from './types/maritime';
 import { useMaritimePhysics } from './hooks/useMaritimePhysics';
 import { Scene3D } from './components/Scene3D';
 import { Dashboard } from './components/Dashboard';
 import { VerificationModal } from './components/VerificationModal';
-import { Maximize2, Minimize2, Layout } from 'lucide-react';
+import { maritimeAudio } from './utils/audioSystem';
+import { Maximize2, Minimize2 } from 'lucide-react';
 
 const DEFAULT_PARAMS: SimulationParams = {
   tugSteeringAngle: 18,
@@ -12,6 +13,7 @@ const DEFAULT_PARAMS: SimulationParams = {
   shipSpeed: 6,
   propellerRpm: 45,
   cameraMode: 'orbit',
+  timeOfDay: 'day',
   quickReleaseActive: false,
   soundEnabled: true,
   fogDensity: 0.008,
@@ -37,16 +39,70 @@ export function App() {
 
   // Actuate Emergency Quick Release
   const handleTriggerQuickRelease = useCallback(() => {
-    setParams((prev) => ({
-      ...prev,
-      quickReleaseActive: !prev.quickReleaseActive,
-    }));
+    setParams((prev) => {
+      const next = !prev.quickReleaseActive;
+      if (next) {
+        maritimeAudio.playQuickRelease();
+      }
+      return { ...prev, quickReleaseActive: next };
+    });
   }, []);
 
   // Change camera mode
   const handleSelectCamera = useCallback((mode: CameraMode) => {
     setParams((prev) => ({ ...prev, cameraMode: mode }));
   }, []);
+
+  // Change time-of-day lighting
+  const handleSelectTimeOfDay = useCallback((time: TimeOfDay) => {
+    setParams((prev) => ({ ...prev, timeOfDay: time }));
+  }, []);
+
+  // Toggle audio mute
+  const handleToggleSound = useCallback(() => {
+    setParams((prev) => {
+      const next = !prev.soundEnabled;
+      maritimeAudio.setMuted(!next);
+      return { ...prev, soundEnabled: next };
+    });
+  }, []);
+
+  // Audio system sync
+  useEffect(() => {
+    maritimeAudio.setMuted(!params.soundEnabled);
+  }, [params.soundEnabled]);
+
+  // Critical alarm sound trigger
+  useEffect(() => {
+    if (!params.soundEnabled) {
+      maritimeAudio.stopAlarm();
+      return;
+    }
+    const isCritical = telemetry.girtingStatus === 'CRITICAL' || telemetry.suctionStatus === 'CRITICAL';
+    if (isCritical) {
+      maritimeAudio.startAlarm();
+    } else {
+      maritimeAudio.stopAlarm();
+    }
+  }, [telemetry.girtingStatus, telemetry.suctionStatus, params.soundEnabled]);
+
+  // High tension creak sound
+  useEffect(() => {
+    if (params.soundEnabled && telemetry.lineTensionKn > 380) {
+      maritimeAudio.playTensionCreak();
+    }
+  }, [telemetry.lineTensionKn, params.soundEnabled]);
+
+  // Periodic sonar ping during safe escort
+  useEffect(() => {
+    if (!params.soundEnabled) return;
+    const interval = setInterval(() => {
+      if (telemetry.girtingStatus !== 'CRITICAL' && telemetry.suctionStatus !== 'CRITICAL') {
+        maritimeAudio.playSonarPing();
+      }
+    }, 4500);
+    return () => clearInterval(interval);
+  }, [params.soundEnabled, telemetry.girtingStatus, telemetry.suctionStatus]);
 
   // Keyboard shortcut listeners
   useEffect(() => {
@@ -64,8 +120,16 @@ export function App() {
         handleSelectCamera('bridgeView');
       } else if (e.key === '4') {
         handleSelectCamera('topDown');
+      } else if (e.key === '5') {
+        handleSelectCamera('cinematic');
+      } else if (e.key.toLowerCase() === 't') {
+        setParams((prev) => {
+          const nextTime: TimeOfDay =
+            prev.timeOfDay === 'day' ? 'sunset' : prev.timeOfDay === 'sunset' ? 'night' : 'day';
+          return { ...prev, timeOfDay: nextTime };
+        });
       } else if (e.key.toLowerCase() === 'm') {
-        setParams((prev) => ({ ...prev, soundEnabled: !prev.soundEnabled }));
+        handleToggleSound();
       } else if (e.key.toLowerCase() === 'f') {
         setIs3DFullscreen((prev) => !prev);
       }
@@ -73,7 +137,7 @@ export function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleTriggerQuickRelease, handleSelectCamera]);
+  }, [handleTriggerQuickRelease, handleSelectCamera, handleToggleSound]);
 
   return (
     <div className="flex flex-col lg:flex-row w-screen h-screen bg-marine-950 overflow-hidden select-none relative font-sans">
@@ -90,6 +154,7 @@ export function App() {
           telemetry={telemetry}
           onUpdatePhysics={updatePhysics}
           onSelectCamera={handleSelectCamera}
+          onSelectTimeOfDay={handleSelectTimeOfDay}
         />
 
         {/* Fullscreen / Split Toggle Floating Button */}
@@ -113,6 +178,7 @@ export function App() {
             onReset={handleReset}
             onTriggerQuickRelease={handleTriggerQuickRelease}
             onOpenVerificationModal={() => setIsVerificationModalOpen(true)}
+            onToggleSound={handleToggleSound}
           />
         </div>
       )}

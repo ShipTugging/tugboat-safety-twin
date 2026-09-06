@@ -1,4 +1,6 @@
-export type CameraMode = 'orbit' | 'tugChase' | 'bridgeView' | 'topDown';
+export type CameraMode = 'orbit' | 'tugChase' | 'bridgeView' | 'topDown' | 'cinematic';
+
+export type TimeOfDay = 'day' | 'sunset' | 'night';
 
 export type RiskLevel = 'SAFE' | 'WARNING' | 'CRITICAL';
 
@@ -8,6 +10,7 @@ export interface SimulationParams {
   shipSpeed: number;        // 0 to 14 knots
   propellerRpm: number;     // 0 to 120 RPM
   cameraMode: CameraMode;
+  timeOfDay: TimeOfDay;
   quickReleaseActive: boolean;
   soundEnabled: boolean;
   fogDensity: number;

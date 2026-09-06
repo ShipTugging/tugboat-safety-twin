@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
-import { SimulationParams, TelemetryState, CameraMode } from '../types/maritime';
+import { SimulationParams, TelemetryState, CameraMode, TimeOfDay } from '../types/maritime';
 import { HarborEnvironment } from './HarborEnvironment';
 import { LargeShip } from './LargeShip';
 import { Tugboat } from './Tugboat';
@@ -11,13 +11,14 @@ import { CameraFrustum } from './CameraFrustum';
 import { PropellerWash } from './PropellerWash';
 import { ShipWake } from './ShipWake';
 import { HazardZones } from './HazardZones';
-import { Camera, AlertTriangle, ShieldAlert, Wind, Zap, Waves, Grid as GridIcon, Crosshair } from 'lucide-react';
+import { Camera, AlertTriangle, ShieldAlert, Wind, Zap, Waves, Grid as GridIcon, Crosshair, Sun, Sunset, Moon } from 'lucide-react';
 
 interface Scene3DProps {
   params: SimulationParams;
   telemetry: TelemetryState;
   onUpdatePhysics: (delta: number) => void;
   onSelectCamera: (mode: CameraMode) => void;
+  onSelectTimeOfDay: (time: TimeOfDay) => void;
 }
 
 // Internal camera controller tracking tugboat with smooth interpolation
@@ -31,7 +32,7 @@ const CameraController: React.FC<{
   const targetPos = useRef(new THREE.Vector3());
   const lookTarget = useRef(new THREE.Vector3());
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     // 1. Advance physics simulation
     onUpdatePhysics(delta);
 
@@ -63,6 +64,18 @@ const CameraController: React.FC<{
       targetPos.current.set(0, 85, -30);
       camera.position.lerp(targetPos.current, 0.06);
       camera.lookAt(0, 0, -30);
+    } else if (cameraMode === 'cinematic') {
+      const time = state.clock.getElapsedTime() * 0.25;
+      const radius = 42;
+      const camX = tx + Math.cos(time) * radius;
+      const camY = ty + 16 + Math.sin(time * 0.8) * 3;
+      const camZ = tz + Math.sin(time) * radius;
+
+      targetPos.current.set(camX, camY, camZ);
+      lookTarget.current.set(tx * 0.4 + 2, ty + 4, tz * 0.4 - 15);
+
+      camera.position.lerp(targetPos.current, 0.05);
+      camera.lookAt(lookTarget.current);
     }
   });
 
@@ -74,6 +87,7 @@ export const Scene3D: React.FC<Scene3DProps> = ({
   telemetry,
   onUpdatePhysics,
   onSelectCamera,
+  onSelectTimeOfDay,
 }) => {
   const [showTacticalGrid, setShowTacticalGrid] = useState<boolean>(true);
   const [showHazardZones, setShowHazardZones] = useState<boolean>(true);
@@ -110,10 +124,14 @@ export const Scene3D: React.FC<Scene3DProps> = ({
         />
 
         {/* Realistic Harbor & Ocean Environment */}
-        <HarborEnvironment showTacticalGrid={showTacticalGrid} />
+        <HarborEnvironment showTacticalGrid={showTacticalGrid} timeOfDay={params.timeOfDay} />
 
         {/* 66,000 DWT Container Ship */}
-        <LargeShip position={telemetry.shipPosition} shipSpeedKnots={params.shipSpeed} />
+        <LargeShip
+          position={telemetry.shipPosition}
+          shipSpeedKnots={params.shipSpeed}
+          timeOfDay={params.timeOfDay}
+        />
 
         {/* ASD Escort Tugboat */}
         <Tugboat
@@ -121,6 +139,7 @@ export const Scene3D: React.FC<Scene3DProps> = ({
           rotation={telemetry.tugRotation}
           isGirtingCritical={isGirtingCritical}
           isInWashTurbulence={inWashZone}
+          timeOfDay={params.timeOfDay}
         />
 
         {/* Dynamic Towing Line */}
@@ -184,8 +203,37 @@ export const Scene3D: React.FC<Scene3DProps> = ({
         </div>
       </div>
 
-      {/* Top Right Viewport: Camera Controls & Ocean Grid Toggle */}
-      <div className="absolute top-4 right-4 z-10 flex items-center gap-2 bg-marine-900/90 backdrop-blur-md p-1.5 rounded-lg border border-slate-700 shadow-lg">
+      {/* Top Right Viewport: Time-of-Day, Camera Controls & Ocean Grid Toggle */}
+      <div className="absolute top-4 right-4 z-10 flex flex-wrap items-center gap-2 bg-marine-900/90 backdrop-blur-md p-1.5 rounded-lg border border-slate-700 shadow-lg max-w-[90vw]">
+        {/* Time of Day Lighting Mode Switcher */}
+        <div className="flex items-center gap-1 border-r border-slate-700/80 pr-2">
+          {(
+            [
+              { id: 'day', label: '주간', icon: Sun, color: 'text-amber-300' },
+              { id: 'sunset', label: '황혼', icon: Sunset, color: 'text-orange-400' },
+              { id: 'night', label: '야간', icon: Moon, color: 'text-cyan-300' },
+            ] as { id: TimeOfDay; label: string; icon: React.FC<{ size?: number; className?: string }>; color: string }[]
+          ).map((tod) => {
+            const Icon = tod.icon;
+            const isSelected = params.timeOfDay === tod.id;
+            return (
+              <button
+                key={tod.id}
+                onClick={() => onSelectTimeOfDay(tod.id)}
+                className={`px-2 py-1 text-xs font-mono rounded flex items-center gap-1 transition-all border ${
+                  isSelected
+                    ? 'bg-cyan-500/25 text-cyan-200 border-cyan-400/60 font-bold shadow'
+                    : 'bg-slate-800/60 text-slate-400 border-slate-700/60 hover:text-slate-200'
+                }`}
+                title={`${tod.label} 환경 조명 전환`}
+              >
+                <Icon size={12} className={isSelected ? tod.color : 'text-slate-400'} />
+                <span>{tod.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
         {/* Ocean Grid Overlay Toggle */}
         <button
           onClick={() => setShowTacticalGrid(!showTacticalGrid)}
@@ -197,7 +245,7 @@ export const Scene3D: React.FC<Scene3DProps> = ({
           title="바다 전술 격자선 켜기/끄기"
         >
           {showTacticalGrid ? <GridIcon size={12} /> : <Waves size={12} />}
-          <span>{showTacticalGrid ? '전술 격자 ON' : '자연 바다'}</span>
+          <span>{showTacticalGrid ? '전술 격자' : '자연 바다'}</span>
         </button>
 
         {/* Hazard Radius / Danger Zones Toggle */}
@@ -226,6 +274,7 @@ export const Scene3D: React.FC<Scene3DProps> = ({
             { id: 'tugChase', label: '예인선 추적' },
             { id: 'bridgeView', label: '선교 내부' },
             { id: 'topDown', label: '상공 부감' },
+            { id: 'cinematic', label: '시네마틱' },
           ] as { id: CameraMode; label: string }[]
         ).map((cam) => (
           <button

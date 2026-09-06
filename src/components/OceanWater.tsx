@@ -1,6 +1,7 @@
 import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { TimeOfDay } from '../types/maritime';
 
 const UltraRealisticOceanShader = {
   vertexShader: `
@@ -152,27 +153,68 @@ const UltraRealisticOceanShader = {
 
 interface OceanWaterProps {
   showTacticalGrid?: boolean;
+  timeOfDay?: TimeOfDay;
 }
 
-export const OceanWater: React.FC<OceanWaterProps> = ({ showTacticalGrid = true }) => {
+export const OceanWater: React.FC<OceanWaterProps> = ({ showTacticalGrid = true, timeOfDay = 'day' }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
 
+  // Dynamic color palette per time-of-day
+  const themeColors = useMemo(() => {
+    switch (timeOfDay) {
+      case 'sunset':
+        return {
+          deep: '#14061f',
+          shallow: '#6a1d10',
+          sss: '#f97316',
+          foam: '#fed7aa',
+          sunDir: new THREE.Vector3(0.9, 0.18, 0.4).normalize(),
+          sunColor: '#ffedd5',
+        };
+      case 'night':
+        return {
+          deep: '#01050e',
+          shallow: '#05162a',
+          sss: '#0284c7',
+          foam: '#64748b',
+          sunDir: new THREE.Vector3(-0.4, 0.85, -0.35).normalize(),
+          sunColor: '#38bdf8',
+        };
+      case 'day':
+      default:
+        return {
+          deep: '#03182b',
+          shallow: '#0369a1',
+          sss: '#06b6d4',
+          foam: '#f8fafc',
+          sunDir: new THREE.Vector3(0.65, 0.55, 0.5).normalize(),
+          sunColor: '#fffbeb',
+        };
+    }
+  }, [timeOfDay]);
+
   const uniforms = useMemo(() => ({
     uTime: { value: 0 },
-    uDeepColor: { value: new THREE.Color('#03182b') },      // Deep oceanic navy
-    uShallowColor: { value: new THREE.Color('#0369a1') },   // Tropical coastal turquoise
-    uSSSColor: { value: new THREE.Color('#06b6d4') },       // Subsurface crest glow
-    uFoamColor: { value: new THREE.Color('#f8fafc') },      // Frothy wave crest foam
-    uSunDirection: { value: new THREE.Vector3(0.65, 0.55, 0.5).normalize() },
-    uSunColor: { value: new THREE.Color('#fffbeb') },       // Crisp warm golden sunlight
+    uDeepColor: { value: new THREE.Color(themeColors.deep) },
+    uShallowColor: { value: new THREE.Color(themeColors.shallow) },
+    uSSSColor: { value: new THREE.Color(themeColors.sss) },
+    uFoamColor: { value: new THREE.Color(themeColors.foam) },
+    uSunDirection: { value: themeColors.sunDir },
+    uSunColor: { value: new THREE.Color(themeColors.sunColor) },
     uGridIntensity: { value: showTacticalGrid ? 0.35 : 0.0 },
-  }), [showTacticalGrid]);
+  }), [themeColors, showTacticalGrid]);
 
   useFrame((state) => {
     if (materialRef.current) {
       materialRef.current.uniforms.uTime.value = state.clock.getElapsedTime();
       materialRef.current.uniforms.uGridIntensity.value = showTacticalGrid ? 0.35 : 0.0;
+      materialRef.current.uniforms.uDeepColor.value.set(themeColors.deep);
+      materialRef.current.uniforms.uShallowColor.value.set(themeColors.shallow);
+      materialRef.current.uniforms.uSSSColor.value.set(themeColors.sss);
+      materialRef.current.uniforms.uFoamColor.value.set(themeColors.foam);
+      materialRef.current.uniforms.uSunDirection.value.copy(themeColors.sunDir);
+      materialRef.current.uniforms.uSunColor.value.set(themeColors.sunColor);
     }
   });
 

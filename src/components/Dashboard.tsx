@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { SimulationParams, TelemetryState } from '../types/maritime';
 import { VisionAIFeed } from './VisionAIFeed';
+import { TacticalRadar } from './TacticalRadar';
+import { TelemetryChart } from './TelemetryChart';
 import { SensorGauges } from './SensorGauges';
 import { ControlPanel } from './ControlPanel';
 import {
@@ -11,6 +13,10 @@ import {
   Radio,
   Clock,
   Zap,
+  Volume2,
+  VolumeX,
+  Eye,
+  TrendingUp,
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -20,6 +26,7 @@ interface DashboardProps {
   onReset: () => void;
   onTriggerQuickRelease: () => void;
   onOpenVerificationModal: () => void;
+  onToggleSound?: () => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -29,7 +36,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onReset,
   onTriggerQuickRelease,
   onOpenVerificationModal,
+  onToggleSound,
 }) => {
+  const [activeTab, setActiveTab] = useState<'vision' | 'radar' | 'chart'>('vision');
   const isGirtingCritical = telemetry.girtingStatus === 'CRITICAL';
   const isSuctionCritical = telemetry.suctionStatus === 'CRITICAL';
   const inWashZone = telemetry.inWashZone;
@@ -48,7 +57,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 항만 예인선 안전 제어 시스템 // C2 실시간 관제
               </h1>
               <span className="px-2 py-0.5 text-[9px] font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 rounded font-bold">
-                디지털 트윈 v2.6
+                디지털 트윈 v3.0
               </span>
             </div>
             <p className="text-[11px] text-slate-300 font-mono flex items-center gap-2 mt-0.5">
@@ -61,8 +70,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        {/* Global Safety Threat Level Indicator */}
+        {/* Global Safety Threat Level Indicator & Sound Toggle */}
         <div className="flex items-center gap-2 font-mono">
+          {onToggleSound && (
+            <button
+              onClick={onToggleSound}
+              className={`p-2 rounded-lg border transition-all ${
+                params.soundEnabled
+                  ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 hover:bg-cyan-500/30'
+                  : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'
+              }`}
+              title={params.soundEnabled ? '음향 활성화됨 (단축키: M)' : '음향 음소거됨 (단축키: M)'}
+            >
+              {params.soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+            </button>
+          )}
+
           <div
             className={`px-3.5 py-1.5 rounded-lg border flex items-center gap-2 text-xs font-bold transition-all shadow-md ${
               isGirtingCritical || isSuctionCritical
@@ -92,8 +115,51 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* 1. Vision AI Optical & Hull Tracking Window */}
-      <VisionAIFeed telemetry={telemetry} />
+      {/* Tactical Monitor Mode Switcher Tabs */}
+      <div className="flex items-center justify-between bg-marine-900/60 p-1 rounded-lg border border-slate-800 text-xs font-mono">
+        <div className="flex items-center gap-1 w-full">
+          <button
+            onClick={() => setActiveTab('vision')}
+            className={`flex-1 py-1.5 px-3 rounded flex items-center justify-center gap-1.5 transition-all font-semibold ${
+              activeTab === 'vision'
+                ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-400/50 shadow'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`}
+          >
+            <Eye size={13} />
+            <span>AI 비전 광학 추적</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('radar')}
+            className={`flex-1 py-1.5 px-3 rounded flex items-center justify-center gap-1.5 transition-all font-semibold ${
+              activeTab === 'radar'
+                ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-400/50 shadow'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`}
+          >
+            <Radio size={13} />
+            <span>2D 전술 레이더</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('chart')}
+            className={`flex-1 py-1.5 px-3 rounded flex items-center justify-center gap-1.5 transition-all font-semibold ${
+              activeTab === 'chart'
+                ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-400/50 shadow'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`}
+          >
+            <TrendingUp size={13} />
+            <span>시계열 텔레메트리</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 1. Tactical Monitor Deck: Active Screen */}
+      {activeTab === 'vision' && <VisionAIFeed telemetry={telemetry} />}
+      {activeTab === 'radar' && <TacticalRadar telemetry={telemetry} inWashZone={inWashZone} />}
+      {activeTab === 'chart' && <TelemetryChart telemetry={telemetry} />}
 
       {/* 2. Sensor Fusion Gauge Grid (Line Angle, IMU Roll Horizon, Tension) */}
       <SensorGauges telemetry={telemetry} />

@@ -2,11 +2,14 @@ import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
+import { TimeOfDay } from '../types/maritime';
+
 interface TugboatProps {
   position: [number, number, number];
   rotation: [number, number, number]; // [pitch, yaw, roll]
   isGirtingCritical: boolean;
   isInWashTurbulence: boolean;
+  timeOfDay?: TimeOfDay;
 }
 
 export const Tugboat: React.FC<TugboatProps> = ({
@@ -14,7 +17,9 @@ export const Tugboat: React.FC<TugboatProps> = ({
   rotation,
   isGirtingCritical,
   isInWashTurbulence,
+  timeOfDay = 'day',
 }) => {
+  const isNight = timeOfDay === 'night';
   const radarRef = useRef<THREE.Group>(null);
 
   useFrame((_, delta) => {
@@ -230,22 +235,65 @@ export const Tugboat: React.FC<TugboatProps> = ({
             <pointLight color="#00f0ff" intensity={1.2} distance={4} />
           </group>
 
-          {/* Towing Masthead Amber Light */}
-          <mesh position={[0, 1.35, 0]}>
-            <sphereGeometry args={[0.14, 8, 8]} />
-            <meshStandardMaterial color="#ffb020" emissive="#ffb020" emissiveIntensity={2} />
-          </mesh>
+          {/* COLREGs Rule 24: Three Vertical Masthead Towing Lanterns */}
+          {[1.2, 1.45, 1.7].map((yOffset, idx) => (
+            <mesh key={`tow-light-${idx}`} position={[0, yOffset, 0]}>
+              <sphereGeometry args={[0.11, 8, 8]} />
+              <meshStandardMaterial
+                color="#fbbf24"
+                emissive="#fbbf24"
+                emissiveIntensity={isNight ? 5.0 : 2.5}
+              />
+            </mesh>
+          ))}
+
+          {/* High-Intensity Marine Searchlight (Night Navigation) */}
+          <group position={[0, 1.9, 0.4]}>
+            <mesh rotation={[Math.PI / 8, 0, 0]}>
+              <cylinderGeometry args={[0.2, 0.28, 0.4, 12]} />
+              <meshStandardMaterial color="#334155" metalness={0.8} />
+            </mesh>
+            <mesh position={[0, 0, 0.2]}>
+              <circleGeometry args={[0.25, 16]} />
+              <meshBasicMaterial color="#ffffff" />
+            </mesh>
+            {isNight && (
+              <spotLight
+                position={[0, 0, 0.3]}
+                target-position={[0, -2, 25]}
+                color="#f8fafc"
+                intensity={18}
+                angle={0.4}
+                penumbra={0.5}
+                distance={70}
+                castShadow
+              />
+            )}
+          </group>
         </group>
 
-        {/* Port & Starboard Navigation Lanterns */}
-        <mesh position={[1.6, 1.4, 0.2]}>
-          <sphereGeometry args={[0.12, 8, 8]} />
-          <meshStandardMaterial color="#22c55e" emissive="#22c55e" emissiveIntensity={2} />
+        {/* Port & Starboard Navigation Lanterns (Red: Port / Green: Starboard) */}
+        <mesh position={[1.65, 1.4, 0.2]}>
+          <sphereGeometry args={[0.14, 8, 8]} />
+          <meshStandardMaterial
+            color="#22c55e"
+            emissive="#22c55e"
+            emissiveIntensity={isNight ? 5.0 : 2.5}
+          />
         </mesh>
-        <mesh position={[-1.6, 1.4, 0.2]}>
-          <sphereGeometry args={[0.12, 8, 8]} />
-          <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={2} />
+        <mesh position={[-1.65, 1.4, 0.2]}>
+          <sphereGeometry args={[0.14, 8, 8]} />
+          <meshStandardMaterial
+            color="#ef4444"
+            emissive="#ef4444"
+            emissiveIntensity={isNight ? 5.0 : 2.5}
+          />
         </mesh>
+
+        {/* Night Deck Floodlights */}
+        {isNight && (
+          <pointLight position={[0, 0.6, 2.5]} color="#fef08a" intensity={3.5} distance={12} />
+        )}
       </group>
 
       {/* ================================================================= */}
