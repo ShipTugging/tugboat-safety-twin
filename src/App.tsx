@@ -7,6 +7,8 @@ import { VerificationModal } from './components/VerificationModal';
 import { maritimeAudio } from './utils/audioSystem';
 import { Anchor, PanelRightClose, PanelRightOpen, Volume2, VolumeX, ShieldCheck, AlertTriangle, ArrowUpRight, RotateCcw, Unplug } from 'lucide-react';
 import { KOREAN_PRESETS } from './components/ControlPanel';
+import { useDatasetExporter } from './hooks/useDatasetExporter';
+import { randomizeEnvironment } from './dataset/environment';
 
 const DEFAULT_PARAMS: SimulationParams = {
   tugSteeringAngle: 18,
@@ -17,13 +19,14 @@ const DEFAULT_PARAMS: SimulationParams = {
   timeOfDay: 'day',
   quickReleaseActive: false,
   soundEnabled: false,
-  fogDensity: 0.008,
+  fogDensity: 0.0014,
 };
 
 export function App() {
   const [params, setParams] = useState<SimulationParams>(DEFAULT_PARAMS);
   const [isVerificationModalOpen, setIsVerificationModalOpen] = useState<boolean>(false);
   const [is3DFullscreen, setIs3DFullscreen] = useState<boolean>(false);
+  const dataset=useDatasetExporter();
 
   // Hydrodynamics & Sensor Fusion Hook
   const { telemetry, updatePhysics } = useMaritimePhysics(params);
@@ -75,7 +78,7 @@ export function App() {
 
   // Critical alarm sound trigger
   useEffect(() => {
-    if (!params.soundEnabled) {
+    if (!params.soundEnabled || dataset.busy) {
       maritimeAudio.stopAlarm();
       return;
     }
@@ -85,7 +88,7 @@ export function App() {
     } else {
       maritimeAudio.stopAlarm();
     }
-  }, [telemetry.girtingStatus, telemetry.suctionStatus, params.soundEnabled]);
+  }, [telemetry.girtingStatus, telemetry.suctionStatus, params.soundEnabled, dataset.busy]);
 
   // High tension creak sound
   useEffect(() => {
@@ -108,7 +111,7 @@ export function App() {
   // Keyboard shortcut listeners
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isVerificationModalOpen) return;
+      if (isVerificationModalOpen || dataset.busy) return;
       if (e.repeat || (e.target instanceof HTMLElement && (e.target.isContentEditable || e.target.closest('input, textarea, select, button, summary')))) return;
 
       if (e.code === 'Space') {
@@ -139,7 +142,7 @@ export function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleTriggerQuickRelease, handleSelectCamera, handleToggleSound, isVerificationModalOpen]);
+  }, [handleTriggerQuickRelease, handleSelectCamera, handleToggleSound, isVerificationModalOpen, dataset.busy]);
 
   const critical = telemetry.girtingStatus === 'CRITICAL' || telemetry.suctionStatus === 'CRITICAL';
   const warning = critical || telemetry.inWashZone || telemetry.girtingStatus === 'WARNING' || telemetry.suctionStatus === 'WARNING';
@@ -150,24 +153,24 @@ export function App() {
         <div className="header-divider"/>
         <div className="header-context"><span>해양 안전 디지털 트윈</span><small>항만 호위 운항 시뮬레이션</small></div>
         <div className={'global-status '+(critical?'is-critical':warning?'is-warning':'')} role="status">{warning?<AlertTriangle size={15}/>:<ShieldCheck size={15}/>}<span>{critical?'위험 · 즉시 확인':warning?'주의 · 운항 확인':'안전 운항 중'}</span></div>
-        <div className="header-actions">
+        <fieldset className="header-actions" disabled={dataset.busy}>
           <button className="icon-button" onClick={handleToggleSound} aria-label={params.soundEnabled?'음향 끄기':'음향 켜기'} title="음향 (M)">{params.soundEnabled?<Volume2 size={17}/>:<VolumeX size={17}/>}</button>
           <button className="icon-button" onClick={()=>setIs3DFullscreen(!is3DFullscreen)} aria-label={is3DFullscreen?'관제 패널 열기':'관제 패널 접기'} title="관제 패널 (F)">{is3DFullscreen?<PanelRightOpen size={17}/>:<PanelRightClose size={17}/>}</button>
           <button className={'emergency-button '+(params.quickReleaseActive?'released':'')} onClick={handleTriggerQuickRelease}><Unplug size={16}/><span>{params.quickReleaseActive?'예인줄 재연결':'비상 분리'}</span><kbd>SPACE</kbd></button>
-        </div>
+        </fieldset>
       </header>
       <main className={'workspace '+(is3DFullscreen?'expanded':'')}>
         <section className="scene-column" aria-label="해양 디지털 트윈">
-          <Scene3D params={params} telemetry={telemetry} onUpdatePhysics={updatePhysics} onSelectCamera={handleSelectCamera} onSelectTimeOfDay={handleSelectTimeOfDay}/>
+          <Scene3D params={dataset.sample?.params??params} telemetry={dataset.sample?.telemetry??telemetry} onUpdatePhysics={updatePhysics} onSelectCamera={handleSelectCamera} onSelectTimeOfDay={handleSelectTimeOfDay} captureSample={dataset.sample} captureBusy={dataset.busy} datasetMode={dataset.enabled} liveCameraMode={params.cameraMode} onCaptureReady={dataset.setCaptureApi}/>
           <section className="scenario-dock" aria-label="시나리오 선택">
-            <div className="scenario-heading"><span className="eyebrow">SCENARIOS</span><span>상황을 선택해 시뮬레이션하세요</span><button onClick={handleReset} title="기본값 복원"><RotateCcw size={13}/>초기화</button></div>
-            <div className="scenario-grid">{KOREAN_PRESETS.map((preset,index)=>{
+            <div className="scenario-heading"><span className="eyebrow">SCENARIOS</span><button disabled={dataset.busy} onClick={handleReset} title="기본값 복원"><RotateCcw size={13}/>초기화</button></div>
+            <fieldset disabled={dataset.busy} className="scenario-grid">{KOREAN_PRESETS.map((preset,index)=>{
               const active = Object.entries(preset.params).every(([key,value])=>params[key as keyof SimulationParams] === value) && !params.quickReleaseActive;
               return <button key={preset.id} className={'scenario-card '+(active?'active':'')} aria-pressed={active} onClick={()=>handleParamChange({...preset.params,quickReleaseActive:false})}><span className="scenario-number">0{index+1}</span><span className="scenario-name">{['정상 호위','거팅 위험','후류 진입','선체 근접'][index]}<small>{['SAFE ESCORT','GIRTING RISK','PROPELLER WASH','HULL SUCTION'][index]}</small></span><ArrowUpRight size={15}/></button>;
-            })}</div>
+            })}</fieldset>
           </section>
         </section>
-        {!is3DFullscreen && <Dashboard params={params} telemetry={telemetry} onChangeParams={handleParamChange} onReset={handleReset} onTriggerQuickRelease={handleTriggerQuickRelease} onOpenVerificationModal={()=>setIsVerificationModalOpen(true)} onToggleSound={handleToggleSound}/>}
+        {!is3DFullscreen && <Dashboard params={dataset.sample?.params??params} telemetry={dataset.sample?.telemetry??telemetry} onChangeParams={handleParamChange} onReset={handleReset} onTriggerQuickRelease={handleTriggerQuickRelease} onOpenVerificationModal={()=>setIsVerificationModalOpen(true)} onToggleSound={handleToggleSound} dataset={dataset} onRandomize={()=>handleParamChange(randomizeEnvironment())}/>}
       </main>
       <footer className="app-footer"><span><i/>SIMULATION ACTIVE</span><span>실제 운항 판단용이 아닌 시나리오 시뮬레이터</span><span>TUG GUARD / 2026</span></footer>
       <VerificationModal isOpen={isVerificationModalOpen} onClose={()=>setIsVerificationModalOpen(false)} currentParams={params} currentTelemetry={telemetry} onChangeParams={handleParamChange}/>

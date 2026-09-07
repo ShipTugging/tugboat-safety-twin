@@ -2,7 +2,7 @@
 
 항만에서 본선과 ASD 예인선의 관계, 예인줄 장력, 거팅·후류·흡인 위험을 탐색하는 인터랙티브 시뮬레이터입니다.
 
-- [현재 공개 사이트](https://tugboat-safety-twin.vercel.app) — 로컬 변경은 배포 후 반영됩니다.
+- [공개 사이트](https://tugboat-safety-twin.vercel.app)
 - 기술: React 18 · TypeScript · Vite 5 · Three.js · React Three Fiber · Tailwind CSS
 
 ## 화면과 기능
@@ -10,10 +10,42 @@
 - 넓은 해양 장면, 접을 수 있는 관제 패널, 네 가지 시나리오를 고르는 하단 조작부
 - 시간대별 바다·조명, 수면에 합성한 항적과 포말, 부두·크레인 배경
 - 개별 적층 컨테이너, 골판 재질, 선체를 따르는 수선 띠, 창문·난간·예인선 방충재
-- 자연 장면/위험 분석 레이어, 다섯 카메라 시점, 고품질/기본 화질
+- 자연 장면/위험 분석 레이어, 기존 다섯 시점 + 선미 덱/조타실 CCTV, 고품질/기본 화질
 - 운항 개요·레이더·추이·센서 탭과 세부 파라미터
 - 상시 접근 가능한 비상 예인줄 분리/재연결
 - 실제 시뮬레이션 관측값을 기록하는 시나리오 점검창; 완료/취소 시 원래 설정 복원
+- Normal Map 기반 수면, 맑음~해무 무작위화, 45RPM 이상 백색 후류(115RPM에서 방출량·크기 2배)
+- AI 데이터 생성 모드: JPEG + YOLO 라벨 ZIP 자동 다운로드
+
+## YOLO 합성 데이터 생성
+
+우측 패널의 **AI 데이터 생성 모드**를 켜고 이미지 수와 시드를 입력한 뒤 **AI 데이터셋 캡처**를 누릅니다. 기본 100장, 1~500장, 고정 960×540 JPEG 품질 0.9입니다. ZIP 생성 후 자동 다운로드하며 수동 다운로드 버튼도 제공합니다. 생성 중 취소할 수 있고 기존 운항 설정·카메라 구도는 유지됩니다.
+
+```text
+synthetic_tug_dataset.zip
+├─ images/frame_0001.jpg ...
+├─ labels/frame_0001.txt ...
+├─ classes.txt
+└─ metadata.json
+```
+
+| ID | 클래스 | 기준 |
+|---|---|---|
+| 0 | Tugboat | 예인선. 자체 CCTV에서는 자선 라벨 제외 |
+| 1 | Towline_Taut | 320kN 이상 또는 CRITICAL, 직선형 줄 |
+| 2 | Towline_Slack | 나머지 연결 상태, 하중·길이에 따른 현수선 |
+| 3 | Ship_Stern | 대형선의 선미 영역(local Z ≤ -21) |
+
+라벨 형식은 `class_id x_center y_center width height`입니다. Box3 투영 후 near/far 평면과 화면 경계를 잘라 0~1로 정규화합니다. 화면 밖·완전 가림 표본은 제외하며 부분 가림은 전체 3D 경계상자의 투영 영역을 사용합니다. 픽셀 단위 가시 영역 라벨은 아니므로 학습 전에 미리보기와 검증 스크립트로 확인하세요. 객체가 보이지 않는 이미지는 빈 라벨의 음성 표본으로 저장됩니다.
+
+시드는 조명·안개·파도·조향·줄 길이·RPM·CCTV/FOV·카메라 미세 위치와 물리 상태를 재현합니다. GPU와 실시간 회전 부품 때문에 픽셀까지 동일함을 보장하지 않습니다. 학습/검증용 데이터는 서로 다른 시드와 수집 실행으로 분리하고 실제 영상으로 별도 검증해야 합니다. AI 모델 학습과 실제 센서 연결은 이 내보내기 기능에 포함되지 않습니다.
+
+```sh
+npm test
+python scripts/verify-dataset.py synthetic_tug_dataset.zip --count 100
+# Pillow 설치 시 이미지 검사와 라벨 미리보기 제공
+python scripts/verify-dataset.py synthetic_tug_dataset.zip --preview preview.png
+```
 
 ## 실행
 
@@ -21,6 +53,7 @@
 npm install
 npm run dev
 npm run test:physics
+npm test
 npm run build
 npm run preview
 ```
@@ -44,7 +77,7 @@ npm run preview
 
 이 프로젝트는 **시나리오 시뮬레이터**이며 실제 센서, 카메라, AI 추론, 선박 제어와 연결되어 있지 않습니다. 선박 명칭과 항만은 시각화를 위한 가상 설정입니다. 물리식과 위험 임계값은 교육·데모 목적이며 실제 운항 판단이나 인증을 대체하지 않습니다.
 
-기존 물리 검사 스크립트는 계산식 복사본을 검증합니다. 앱의 실제 동작은 브라우저 시나리오 검사를 함께 수행해야 합니다. 선체 근접 프리셋은 현재 엔진에서 약 12~13m 이격으로 나타나며 반드시 CRITICAL을 발생시키는 프리셋은 아닙니다. 디자인 개선에서 위험 계산과 프리셋 수치는 유지했습니다.
+`npm test`는 실제 공용 물리 엔진, 투영·곡률·거품·아카이브·카메라를 검증합니다. 기존 `test:physics`는 계산식 복사본 검사로 유지합니다. 선체 근접 프리셋은 현재 엔진에서 약 12~13m 이격으로 나타나며 반드시 CRITICAL을 발생시키는 프리셋은 아닙니다.
 
 고품질은 그림자와 높은 수면 분할을 사용하며 픽셀 비율을 최대 1.5로 제한합니다. 성능이 부족하면 기본 화질을 선택하세요. 실시간 선박 반사·완전한 부력 해석·실사 모델은 현재 구현 범위에 포함하지 않습니다.
 
@@ -53,6 +86,8 @@ npm run preview
 - [디자인 검토와 예상 문제](docs/2026-09-07-design-review.md)
 - [구현 계획](docs/2026-09-07-implementation-plan.md)
 - [트러블슈팅과 검증 기록](docs/2026-09-07-troubleshooting.md)
+- [합성 데이터 설계](docs/2026-09-07-synthetic-dataset-plan.md)
+- [합성 데이터 검증과 트러블슈팅](docs/2026-09-07-synthetic-dataset-validation.md)
 
 .env 및 API 키 등 민감정보는 저장소에 추가하거나 푸시하지 않습니다.
 

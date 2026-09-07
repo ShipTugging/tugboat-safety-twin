@@ -1,11 +1,13 @@
 import React from 'react';
 import { Sky } from '@react-three/drei';
 import { OceanWater } from './OceanWater';
+import { SternFoam } from './SternFoam';
 import { TelemetryState, TimeOfDay } from '../types/maritime';
 
 interface Props {
   showTacticalGrid?:boolean; timeOfDay?:TimeOfDay; telemetry:TelemetryState;
   shipSpeed:number; propellerRpm:number; highQuality:boolean;
+  fogDensity?:number; sunIntensity?:number; waveStrength?:number; simulationTime?:number;
 }
 function Crane({x,z}:{x:number;z:number}) {
   return <group position={[x,2,z]}>
@@ -16,17 +18,19 @@ function Crane({x,z}:{x:number;z:number}) {
     <mesh position={[0,14,23]}><boxGeometry args={[9,.7,2]}/><meshStandardMaterial color="#a6aaa0"/></mesh>
   </group>;
 }
-export function HarborEnvironment({showTacticalGrid,timeOfDay='day',telemetry,shipSpeed,propellerRpm,highQuality}:Props) {
+export function HarborEnvironment({showTacticalGrid,timeOfDay='day',telemetry,shipSpeed,propellerRpm,highQuality,fogDensity=.0014,sunIntensity=1,waveStrength=1,simulationTime}:Props) {
   const night=timeOfDay==='night', sunset=timeOfDay==='sunset';
-  const sun:[number,number,number]=night?[-80,140,40]:sunset?[-160,40,70]:[-130,110,50];
+  const sun:[number,number,number]=night?[-80,140,40]:sunset?[-160,40,70]:[-30,170,34];
+  const fogColor=night?'#142236':sunset?'#b99b85':'#b7ccd1';
   return <>
     <color attach="background" args={[night?'#111e31':sunset?'#b99b85':'#b7ccd1']}/>
-    <fog attach="fog" args={[night?'#142236':sunset?'#b99b85':'#b7ccd1',180,650]}/>
+    <fogExp2 attach="fog" args={[fogColor,fogDensity]}/>
     {!night && <Sky distance={450000} sunPosition={sun} turbidity={sunset?5:3} rayleigh={sunset?1.5:.65} mieCoefficient={.006} mieDirectionalG={.8}/>}
-    <hemisphereLight args={[night?'#6c8bab':'#d5e9e9',night?'#101b22':'#526e69',night?.9:1.7]}/>
-    <directionalLight position={sun} intensity={night?.8:sunset?2.1:2.7} color={night?'#a2bad9':sunset?'#ffd4a1':'#fff1d7'} castShadow={highQuality} shadow-mapSize={[2048,2048]} shadow-camera-left={-85} shadow-camera-right={85} shadow-camera-top={85} shadow-camera-bottom={-85} shadow-camera-near={10} shadow-camera-far={350} shadow-bias={-.0003} shadow-normalBias={.15}/>
-    <directionalLight position={[65,45,-100]} intensity={night?.35:1.6} color={night?'#6f9bc3':'#d2e3e5'}/>
-    <OceanWater showTacticalGrid={showTacticalGrid} timeOfDay={timeOfDay} telemetry={telemetry} shipSpeed={shipSpeed} propellerRpm={propellerRpm} highQuality={highQuality}/>
+    <hemisphereLight args={[night?'#6c8bab':'#d5e9e9',night?'#101b22':'#526e69',night?.24:sunset?.8:1.7]}/>
+    <directionalLight position={sun} intensity={(night?.15:sunset?2.1:2.7)*sunIntensity} color={night?'#a2bad9':sunset?'#ffb56d':'#fff1d7'} castShadow={highQuality} shadow-mapSize={[2048,2048]} shadow-camera-left={-85} shadow-camera-right={85} shadow-camera-top={85} shadow-camera-bottom={-85} shadow-camera-near={10} shadow-camera-far={350} shadow-bias={-.0003} shadow-normalBias={.15}/>
+    <directionalLight position={[65,45,-100]} intensity={night?.08:sunset?.35:1.6} color={night?'#6f9bc3':'#d2e3e5'}/>
+    <OceanWater showTacticalGrid={showTacticalGrid} timeOfDay={timeOfDay} telemetry={telemetry} shipSpeed={shipSpeed} propellerRpm={propellerRpm} highQuality={highQuality} fogDensity={fogDensity} sunIntensity={sunIntensity} waveStrength={waveStrength} simulationTime={simulationTime}/>
+    <SternFoam shipPosition={telemetry.shipPosition} propellerRpm={propellerRpm} simulationTime={simulationTime} fogDensity={fogDensity} fogColor={fogColor}/>
     <group position={[0,0,175]}>
       <mesh position={[0,1,35]} receiveShadow><boxGeometry args={[520,5,70]}/><meshStandardMaterial color="#687570" roughness={.95}/></mesh>
       <mesh position={[0,3.7,2]}><boxGeometry args={[520,.35,1.1]}/><meshStandardMaterial color="#c2bca3"/></mesh>

@@ -1,4 +1,4 @@
-export type CameraMode = 'orbit' | 'tugChase' | 'bridgeView' | 'topDown' | 'cinematic';
+export type CameraMode = 'orbit' | 'tugChase' | 'bridgeView' | 'topDown' | 'cinematic' | 'TUG_AFT_DECK' | 'TUG_BRIDGE';
 
 export type TimeOfDay = 'day' | 'sunset' | 'night';
 
@@ -14,6 +14,10 @@ export interface SimulationParams {
   quickReleaseActive: boolean;
   soundEnabled: boolean;
   fogDensity: number;
+  sunIntensity?: number;
+  waveStrength?: number;
+  cameraFov?: number;
+  cameraJitter?: [number, number, number];
 }
 
 export interface TelemetryState {
