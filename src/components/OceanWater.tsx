@@ -1,243 +1,97 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useMemo, useRef, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { TimeOfDay } from '../types/maritime';
-
-const UltraRealisticOceanShader = {
-  vertexShader: `
-    uniform float uTime;
-    varying vec3 vWorldPosition;
-    varying vec3 vNormal;
-    varying float vWaveHeight;
-    varying vec3 vViewPosition;
-
-    // Gerstner Wave formulation with precise analytical normal calculation
-    vec3 gerstnerWave(vec4 wave, vec3 p, inout vec3 tangent, inout vec3 binormal) {
-      float steepness = wave.z;
-      float wavelength = wave.w;
-      float k = 2.0 * 3.14159265 / wavelength;
-      float c = sqrt(9.8 / k);
-      vec2 d = normalize(wave.xy);
-      float f = k * (dot(d, p.xz) - c * uTime * 0.85);
-      float a = steepness / k;
-
-      tangent += vec3(
-        -d.x * d.x * (steepness * sin(f)),
-        d.x * (steepness * cos(f)),
-        -d.x * d.y * (steepness * sin(f))
-      );
-      binormal += vec3(
-        -d.x * d.y * (steepness * sin(f)),
-        d.y * (steepness * cos(f)),
-        -d.y * d.y * (steepness * sin(f))
-      );
-
-      return vec3(
-        d.x * (a * cos(f)),
-        a * sin(f),
-        d.y * (a * cos(f))
-      );
-    }
-
-    void main() {
-      vec3 gridPoint = position;
-      vec3 tangent = vec3(1.0, 0.0, 0.0);
-      vec3 binormal = vec3(0.0, 0.0, 1.0);
-      vec3 p = gridPoint;
-
-      // 6-component multi-octave oceanic swell + wind chop
-      vec4 w1 = vec4(1.0, 0.25, 0.20, 36.0); // Primary swell
-      vec4 w2 = vec4(0.35, 1.0, 0.16, 22.0); // Secondary cross-swell
-      vec4 w3 = vec4(-0.6, 0.8, 0.14, 11.0); // Medium wind sea
-      vec4 w4 = vec4(0.8, -0.5, 0.10, 5.8);  // Short chop
-      vec4 w5 = vec4(-0.3, -0.9, 0.06, 2.8); // Capillary ripple
-      vec4 w6 = vec4(0.9, 0.4, 0.04, 1.6);   // High frequency glitter
-
-      p += gerstnerWave(w1, gridPoint, tangent, binormal);
-      p += gerstnerWave(w2, gridPoint, tangent, binormal);
-      p += gerstnerWave(w3, gridPoint, tangent, binormal);
-      p += gerstnerWave(w4, gridPoint, tangent, binormal);
-      p += gerstnerWave(w5, gridPoint, tangent, binormal);
-      p += gerstnerWave(w6, gridPoint, tangent, binormal);
-
-      vec3 normal = normalize(cross(binormal, tangent));
-      vNormal = normal;
-      vWaveHeight = p.y;
-
-      vec4 worldPos = modelMatrix * vec4(p, 1.0);
-      vWorldPosition = worldPos.xyz;
-
-      vec4 mvPosition = viewMatrix * worldPos;
-      vViewPosition = -mvPosition.xyz;
-      gl_Position = projectionMatrix * mvPosition;
-    }
-  `,
-  fragmentShader: `
-    uniform vec3 uDeepColor;
-    uniform vec3 uShallowColor;
-    uniform vec3 uSSSColor;
-    uniform vec3 uFoamColor;
-    uniform vec3 uSunDirection;
-    uniform vec3 uSunColor;
-    uniform float uGridIntensity;
-    uniform float uTime;
-
-    varying vec3 vWorldPosition;
-    varying vec3 vNormal;
-    varying float vWaveHeight;
-    varying vec3 vViewPosition;
-
-    // Pseudo-random noise for micro surface turbulence
-    float hash(vec2 p) {
-      return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-    }
-    float noise(vec2 p) {
-      vec2 i = floor(p);
-      vec2 f = fract(p);
-      vec2 u = f*f*(3.0-2.0*f);
-      return mix(mix(hash(i + vec2(0.0,0.0)), hash(i + vec2(1.0,0.0)), u.x),
-                 mix(hash(i + vec2(0.0,1.0)), hash(i + vec2(1.0,1.0)), u.x), u.y);
-    }
-
-    void main() {
-      vec3 viewDir = normalize(vViewPosition);
-      vec3 normal = normalize(vNormal);
-
-      // Add high-frequency procedural micro-normals for sparkling ripple highlights
-      vec2 rippleUv = vWorldPosition.xz * 1.5 + vec2(uTime * 0.1, uTime * 0.08);
-      float n = noise(rippleUv);
-      normal.xz += (vec2(noise(rippleUv + 0.5), noise(rippleUv + 1.2)) - 0.5) * 0.12;
-      normal = normalize(normal);
-
-      // 1. Schlick's Fresnel Approximation (realistic reflection vs transmission)
-      float NdotV = max(dot(viewDir, normal), 0.0);
-      float fresnel = 0.04 + 0.96 * pow(1.0 - NdotV, 4.5);
-
-      // 2. Depth Water Tint based on wave height
-      float depthFactor = smoothstep(-1.5, 1.6, vWaveHeight);
-      vec3 waterBodyColor = mix(uDeepColor, uShallowColor, depthFactor);
-
-      // 3. Subsurface Scattering (light shining through translucent wave crests)
-      float sssFactor = max(0.0, dot(vNormal, uSunDirection)) * smoothstep(0.4, 1.4, vWaveHeight);
-      waterBodyColor += uSSSColor * sssFactor * 0.45;
-
-      // 4. White Crest Seafoam
-      float foamNoise = noise(vWorldPosition.xz * 3.5 + uTime * 0.25);
-      float foamThreshold = 0.85 - foamNoise * 0.35;
-      float foamFactor = smoothstep(foamThreshold, 1.4, vWaveHeight);
-      vec3 finalWaterColor = mix(waterBodyColor, uFoamColor, foamFactor * 0.92);
-
-      // 5. Dual-lobe Solar Specular Reflection (Sun glitter glistening on sea)
-      vec3 halfVector = normalize(uSunDirection + viewDir);
-      float NdotH = max(dot(normal, halfVector), 0.0);
-      float sharpSpec = pow(NdotH, 180.0) * 3.5;
-      float broadSpec = pow(NdotH, 30.0) * 0.8;
-      vec3 sunSpecular = uSunColor * (sharpSpec + broadSpec);
-
-      // 6. Sky Horizon Gradient Reflection
-      vec3 skyReflection = mix(vec3(0.45, 0.68, 0.92), vec3(0.75, 0.88, 1.0), normal.y);
-      vec3 surfaceColor = mix(finalWaterColor, skyReflection, fresnel * 0.75) + sunSpecular;
-
-      // 7. Tactical Digital Twin Grid Overlay (Optional toggle)
-      if (uGridIntensity > 0.01) {
-        vec2 gridCoord = abs(fract(vWorldPosition.xz * 0.2) - 0.5);
-        float lineDist = min(gridCoord.x, gridCoord.y);
-        float gridLine = 1.0 - smoothstep(0.0, 0.035, lineDist);
-        surfaceColor += vec3(0.0, 0.95, 1.0) * gridLine * uGridIntensity * 0.3;
-      }
-
-      gl_FragColor = vec4(surfaceColor, 0.95);
-    }
-  `
-};
+import { TelemetryState, TimeOfDay } from '../types/maritime';
 
 interface OceanWaterProps {
-  showTacticalGrid?: boolean;
-  timeOfDay?: TimeOfDay;
+  showTacticalGrid?: boolean; timeOfDay?: TimeOfDay; telemetry: TelemetryState;
+  shipSpeed: number; propellerRpm: number; highQuality: boolean;
 }
+const vertexShader = `
+  uniform float uTime;
+  varying vec3 vWorld;
+  void main() {
+    vec3 p = position;
+    p.y += .09*sin(p.x*.23+p.z*.13-uTime*.8) + .055*sin(p.z*.42-p.x*.1-uTime*1.1);
+    vWorld = (modelMatrix*vec4(p,1.)).xyz;
+    gl_Position = projectionMatrix*viewMatrix*vec4(vWorld,1.);
+  }
+`;
+const fragmentShader = `
+  uniform float uTime, uNight, uSunset, uGrid, uSpeed, uRpm;
+  uniform vec3 uTug;
+  uniform float uYaw;
+  varying vec3 vWorld;
+  float hash(vec2 p) { return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+  float noise(vec2 p) {
+    vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
+    return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+1.),f.x),f.y);
+  }
+  float detail(vec2 p) {
+    return noise(p)*.55 + noise(p*2.03)*.27 + noise(p*4.09)*.12 + noise(p*8.11)*.06;
+  }
+  void main() {
+    vec2 p=vWorld.xz;
+    vec2 uv=p*.95+vec2(uTime*.18,-uTime*.12);
+    float a=detail(uv);
+    float dx=detail(uv+vec2(.12,0))-a;
+    float dz=detail(uv+vec2(0,.12))-a;
+    vec3 n=normalize(vec3(-dx*2.2,1.,-dz*2.2));
+    n.x += -.021*cos(p.x*.23+p.y*.13-uTime*.8);
+    n.z += -.023*cos(p.y*.42-p.x*.1-uTime*1.1);
+    n=normalize(n);
+    vec3 eye=normalize(cameraPosition-vWorld);
+    float fresnel=.025+.975*pow(1.-max(dot(eye,n),0.),5.);
+    vec3 deep=mix(vec3(.025,.17,.19),vec3(.065,.12,.14),uSunset);
+    deep=mix(deep,vec3(.006,.024,.048),uNight);
+    vec3 sky=mix(vec3(.45,.64,.69),vec3(.72,.47,.32),uSunset);
+    sky=mix(sky,vec3(.07,.12,.20),uNight);
+    vec3 sun=normalize(mix(vec3(-.65,.55,.25),vec3(-.8,.2,.35),uSunset));
+    sun=normalize(mix(sun,vec3(-.4,.7,.2),uNight));
+    vec3 h=normalize(sun+eye);
+    float spec=pow(max(dot(n,h),0.),180.)*.65 + pow(max(dot(n,h),0.),28.)*.055;
+    vec3 sunColor=mix(vec3(1.,.91,.72),vec3(1.,.61,.32),uSunset);
+    sunColor=mix(sunColor,vec3(.22,.38,.6),uNight);
+    vec3 color=mix(deep*(.83+a*.4),sky,clamp(fresnel*.55,0.,1.)) + spec*sunColor;
 
-export const OceanWater: React.FC<OceanWaterProps> = ({ showTacticalGrid = true, timeOfDay = 'day' }) => {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const materialRef = useRef<THREE.ShaderMaterial>(null);
-
-  // Dynamic color palette per time-of-day
-  const themeColors = useMemo(() => {
-    switch (timeOfDay) {
-      case 'sunset':
-        return {
-          deep: '#14061f',
-          shallow: '#6a1d10',
-          sss: '#f97316',
-          foam: '#fed7aa',
-          sunDir: new THREE.Vector3(0.9, 0.18, 0.4).normalize(),
-          sunColor: '#ffedd5',
-        };
-      case 'night':
-        return {
-          deep: '#01050e',
-          shallow: '#05162a',
-          sss: '#0284c7',
-          foam: '#64748b',
-          sunDir: new THREE.Vector3(-0.4, 0.85, -0.35).normalize(),
-          sunColor: '#38bdf8',
-        };
-      case 'day':
-      default:
-        return {
-          deep: '#03182b',
-          shallow: '#0369a1',
-          sss: '#06b6d4',
-          foam: '#f8fafc',
-          sunDir: new THREE.Vector3(0.65, 0.55, 0.5).normalize(),
-          sunColor: '#fffbeb',
-        };
+    // Foam lives on the same surface, avoiding coplanar transparent wake meshes.
+    float aft=-36.-p.y;
+    float width=2.+max(aft,0.)*.17;
+    float trail=(1.-smoothstep(width*.45,width,abs(p.x)))*smoothstep(0.,4.,aft)*(1.-smoothstep(10.,65.,aft));
+    float vArm=exp(-pow((abs(p.x)-(2.+max(aft,0.)*.27))*.8,2.))*smoothstep(0.,4.,aft)*(1.-smoothstep(12.,65.,aft));
+    vec2 rel=p-uTug.xz;
+    vec2 local=vec2(cos(uYaw)*rel.x-sin(uYaw)*rel.y,sin(uYaw)*rel.x+cos(uYaw)*rel.y);
+    float tugAft=-local.y-4.;
+    float tugTrail=exp(-pow(local.x/(1.3+max(tugAft,0.)*.14),2.))*smoothstep(0.,2.,tugAft)*(1.-smoothstep(3.,22.,tugAft));
+    float tugBow=exp(-pow((length(vec2(local.x, (local.y-3.8)*.6))-2.8)*2.,2.))*smoothstep(0.,3.,local.y);
+    float foamGrain=smoothstep(.35,.8,detail(p*2.+vec2(0,uTime*.9)));
+    float foam=(trail*clamp(uRpm/120.,0.,1.)*.7 + vArm*uSpeed/14. + tugTrail*uSpeed/14. + tugBow*uSpeed/14.)*foamGrain;
+    color=mix(color,mix(vec3(.72,.85,.82),vec3(.19,.29,.35),uNight),clamp(foam,0.,.72));
+    if(uGrid>.5) {
+      vec2 coord=p/10.;
+      vec2 grid=abs(fract(coord-.5)-.5)/max(fwidth(coord),vec2(.001));
+      float line=1.-min(min(grid.x,grid.y),1.);
+      color=mix(color,vec3(.35,.67,.62),line*.14);
     }
-  }, [timeOfDay]);
-
-  const uniforms = useMemo(() => ({
-    uTime: { value: 0 },
-    uDeepColor: { value: new THREE.Color(themeColors.deep) },
-    uShallowColor: { value: new THREE.Color(themeColors.shallow) },
-    uSSSColor: { value: new THREE.Color(themeColors.sss) },
-    uFoamColor: { value: new THREE.Color(themeColors.foam) },
-    uSunDirection: { value: themeColors.sunDir },
-    uSunColor: { value: new THREE.Color(themeColors.sunColor) },
-    uGridIntensity: { value: showTacticalGrid ? 0.35 : 0.0 },
-  }), [themeColors, showTacticalGrid]);
-
-  useFrame((state) => {
-    if (materialRef.current) {
-      materialRef.current.uniforms.uTime.value = state.clock.getElapsedTime();
-      materialRef.current.uniforms.uGridIntensity.value = showTacticalGrid ? 0.35 : 0.0;
-      materialRef.current.uniforms.uDeepColor.value.set(themeColors.deep);
-      materialRef.current.uniforms.uShallowColor.value.set(themeColors.shallow);
-      materialRef.current.uniforms.uSSSColor.value.set(themeColors.sss);
-      materialRef.current.uniforms.uFoamColor.value.set(themeColors.foam);
-      materialRef.current.uniforms.uSunDirection.value.copy(themeColors.sunDir);
-      materialRef.current.uniforms.uSunColor.value.set(themeColors.sunColor);
-    }
+    float fog=1.-exp(-length(cameraPosition-vWorld)*.0014);
+    color=mix(color,sky*.8,clamp(fog,0.,.85));
+    gl_FragColor=vec4(color,1.);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+  }
+`;
+export function OceanWater({showTacticalGrid=false,timeOfDay='day',telemetry,shipSpeed,propellerRpm,highQuality}:OceanWaterProps) {
+  const mat=useRef<THREE.ShaderMaterial>(null);
+  const geometry=useMemo(()=>new THREE.PlaneGeometry(1800,1800,highQuality?220:120,highQuality?220:120).rotateX(-Math.PI/2),[highQuality]);
+  useEffect(()=>()=>geometry.dispose(),[geometry]);
+  const uniforms=useMemo(()=>({uTime:{value:0},uNight:{value:0},uSunset:{value:0},uGrid:{value:0},uSpeed:{value:0},uRpm:{value:0},uTug:{value:new THREE.Vector3()},uYaw:{value:0}}),[]);
+  useFrame(state=>{
+    if(!mat.current) return;
+    const u=mat.current.uniforms;
+    u.uTime.value=state.clock.elapsedTime;
+    u.uNight.value=timeOfDay==='night'?1:0; u.uSunset.value=timeOfDay==='sunset'?1:0;
+    u.uGrid.value=showTacticalGrid?1:0; u.uSpeed.value=shipSpeed; u.uRpm.value=propellerRpm;
+    u.uTug.value.set(...telemetry.tugPosition); u.uYaw.value=telemetry.tugRotation[1];
   });
-
-  return (
-    <group>
-      {/* High-Resolution Dynamic Ocean Mesh */}
-      <mesh ref={meshRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.2, -20]} receiveShadow>
-        <planeGeometry args={[500, 500, 200, 200]} />
-        <shaderMaterial
-          ref={materialRef}
-          vertexShader={UltraRealisticOceanShader.vertexShader}
-          fragmentShader={UltraRealisticOceanShader.fragmentShader}
-          uniforms={uniforms}
-          transparent
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-
-      {/* Deep Ocean Bed Horizon Plane */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -15, -20]}>
-        <planeGeometry args={[600, 600]} />
-        <meshBasicMaterial color="#020c17" />
-      </mesh>
-    </group>
-  );
-};
+  return <mesh geometry={geometry} position={[0,-.15,0]}><shaderMaterial ref={mat} uniforms={uniforms} vertexShader={vertexShader} fragmentShader={fragmentShader}/></mesh>;
+}

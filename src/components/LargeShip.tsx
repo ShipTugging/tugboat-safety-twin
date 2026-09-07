@@ -1,4 +1,4 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
@@ -15,6 +15,70 @@ export const LargeShip: React.FC<LargeShipProps> = ({ position, shipSpeedKnots, 
   const radarMainRef = useRef<THREE.Group>(null);
   const radarSubRef = useRef<THREE.Group>(null);
   const propRef = useRef<THREE.Group>(null);
+  // One small, deterministic texture is shared by every cargo unit.
+  const corrugation = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#b5b5b5';
+    ctx.fillRect(0, 0, 256, 128);
+    for (let x = 0; x < 256; x += 16) {
+      ctx.fillStyle = '#dedede';
+      ctx.fillRect(x, 0, 3, 128);
+      ctx.fillStyle = '#868686';
+      ctx.fillRect(x + 10, 0, 3, 128);
+    }
+    ctx.fillStyle = '#a0a0a0';
+    ctx.fillRect(0, 0, 256, 4);
+    ctx.fillRect(0, 124, 256, 4);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.anisotropy = 4;
+    return texture;
+  }, []);
+  useEffect(() => () => corrugation.dispose(), [corrugation]);
+  const markings = useMemo(() => {
+    const makeWindows = (rows: number) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = rows * 96;
+      const ctx = canvas.getContext('2d')!;
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < 8; col++) {
+          const x = 16 + col * 62;
+          const y = 24 + row * 96;
+          ctx.fillStyle = '#919d9c';
+          ctx.fillRect(x - 3, y - 3, 39, 36);
+          ctx.fillStyle = '#2e4852';
+          ctx.fillRect(x, y, 33, 30);
+          ctx.fillStyle = '#66848b';
+          ctx.fillRect(x + 2, y + 2, 29, 6);
+          ctx.fillStyle = '#c5c9c0';
+          ctx.fillRect(x - 4, y + 34, 42, 3);
+        }
+      }
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.anisotropy = 4;
+      return texture;
+    };
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d')!;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#dadbd0';
+    ctx.font = '600 76px Arial, sans-serif';
+    ctx.fillText('OCEAN MERIDIAN', 512, 120);
+    ctx.font = '32px Arial, sans-serif';
+    ctx.fillText('BUSAN', 512, 181);
+    const name = new THREE.CanvasTexture(canvas);
+    name.colorSpace = THREE.SRGBColorSpace;
+    name.anisotropy = 4;
+    return { cabins: makeWindows(3), bridge: makeWindows(1), name };
+  }, []);
+  useEffect(() => () => Object.values(markings).forEach(texture => texture.dispose()), [markings]);
 
   useFrame((_, delta) => {
     if (radarMainRef.current) {
@@ -29,7 +93,7 @@ export const LargeShip: React.FC<LargeShipProps> = ({ position, shipSpeedKnots, 
   });
 
   // Generate authentic curved waterline hull shape
-  const { hullGeometry, underwaterHullGeom } = useMemo(() => {
+  const { hullGeometry, underwaterHullGeom, stripeGeometry, deckGeometry, railGeometry } = useMemo(() => {
     // 2D Waterline profile of 66,000 DWT Container Ship
     const shape = new THREE.Shape();
     
@@ -79,8 +143,21 @@ export const LargeShip: React.FC<LargeShipProps> = ({ position, shipSpeedKnots, 
     underGeom.rotateX(Math.PI / 2);
     underGeom.translate(0, 0.4, 0);
 
-    return { hullGeometry: geom, underwaterHullGeom: underGeom };
+    const stripe = new THREE.ExtrudeGeometry(shape, { depth: 0.45, bevelEnabled: false, curveSegments: 20 });
+    stripe.rotateX(Math.PI / 2);
+    stripe.scale(1.09, 1, 1.02);
+    stripe.translate(0, 0.8, 0);
+    const deck = new THREE.ShapeGeometry(shape, 20);
+    deck.rotateX(Math.PI / 2);
+    deck.translate(0, 7.61, 0);
+    const railPath = new THREE.CatmullRomCurve3(shape.getSpacedPoints(80).map(p => new THREE.Vector3(p.x, 8.3, p.y)), true);
+    const rail = new THREE.TubeGeometry(railPath, 100, 0.045, 4, true);
+    return { hullGeometry: geom, underwaterHullGeom: underGeom, stripeGeometry: stripe, deckGeometry: deck, railGeometry: rail };
   }, []);
+
+  useEffect(() => () => {
+    [hullGeometry, underwaterHullGeom, stripeGeometry, deckGeometry, railGeometry].forEach(geometry => geometry.dispose());
+  }, [hullGeometry, underwaterHullGeom, stripeGeometry, deckGeometry, railGeometry]);
 
   return (
     <group position={position}>
@@ -91,50 +168,52 @@ export const LargeShip: React.FC<LargeShipProps> = ({ position, shipSpeedKnots, 
       {/* Underwater Curved Hull (Red Antifouling) */}
       <mesh geometry={underwaterHullGeom} castShadow receiveShadow>
         <meshStandardMaterial
-          color="#881337"
+          color="#733e37"
           roughness={0.65}
           metalness={0.2}
         />
       </mesh>
 
       {/* Waterline White & Black Boot-Topping Stripe */}
-      <mesh position={[0, 0.35, 0]}>
-        <boxGeometry args={[14.4, 0.4, 71.5]} />
-        <meshStandardMaterial color="#ffffff" roughness={0.4} />
+      <mesh geometry={stripeGeometry}>
+        <meshStandardMaterial color="#aca999" roughness={0.7} />
+      </mesh>
+      <mesh geometry={deckGeometry} receiveShadow>
+        <meshStandardMaterial color="#606b64" roughness={0.94} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh geometry={railGeometry}>
+        <meshStandardMaterial color="#b3b9b5" roughness={0.65} />
       </mesh>
 
       {/* Upper Freeboard Curved Hull (Dark Marine Charcoal/Navy) */}
       <mesh geometry={hullGeometry} castShadow receiveShadow>
         <meshStandardMaterial
-          color="#1e293b"
-          roughness={0.45}
-          metalness={0.35}
+          color="#3d5261"
+          roughness={0.76}
+          metalness={0.16}
         />
+      </mesh>
+
+      <mesh position={[0, 3.6, -35.86]} rotation={[0, Math.PI, 0]}>
+        <planeGeometry args={[5.8, 1.45]} />
+        <meshStandardMaterial map={markings.name} transparent alphaTest={0.1} depthWrite={false} roughness={0.85} />
       </mesh>
 
       {/* Pronounced Bulbous Bow (Underwater forward sphere/cylinder) */}
       <group position={[0, -1.8, 38]}>
         <mesh rotation={[Math.PI / 2, 0, 0]} castShadow>
           <cylinderGeometry args={[2.2, 3.2, 6.5, 24]} />
-          <meshStandardMaterial color="#881337" roughness={0.65} />
+          <meshStandardMaterial color="#733e37" roughness={0.65} />
         </mesh>
         <mesh position={[0, 0, 3.2]} castShadow>
           <sphereGeometry args={[2.2, 24, 24]} />
-          <meshStandardMaterial color="#881337" roughness={0.65} />
-        </mesh>
-      </group>
-
-      {/* Flared Bow Flare & Knife-Edge Stempost */}
-      <group position={[0, 4.2, 35.5]}>
-        <mesh rotation={[Math.PI, 0, 0]} castShadow>
-          <coneGeometry args={[4.2, 6.2, 4]} />
-          <meshStandardMaterial color="#1e293b" roughness={0.5} />
+          <meshStandardMaterial color="#733e37" roughness={0.65} />
         </mesh>
       </group>
 
       {/* Port & Starboard Bow Anchor Pockets with Cast Iron Anchors */}
-      {[-6.8, 6.8].map((x, i) => (
-        <group key={`anchor-${i}`} position={[x, 4.2, 31]} rotation={[0, i === 0 ? -Math.PI / 2 : Math.PI / 2, 0]}>
+      {[-3.25, 3.25].map((x, i) => (
+        <group key={`anchor-${i}`} position={[x, 4.2, 30]} rotation={[0, i === 0 ? -Math.PI / 2 : Math.PI / 2, 0]}>
           {/* Hawse Hole Pocket Rim */}
           <mesh>
             <torusGeometry args={[0.7, 0.2, 8, 16]} />
@@ -149,16 +228,11 @@ export const LargeShip: React.FC<LargeShipProps> = ({ position, shipSpeedKnots, 
       ))}
 
       {/* Forecastle Mooring Deck & Handrails */}
-      <group position={[0, 6.8, 32]}>
-        <mesh rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[10, 7]} />
-          <meshStandardMaterial color="#14532d" roughness={0.8} />
-        </mesh>
-        {/* Twin Mooring Windlasses */}
-        {[-2.8, 2.8].map((x, i) => (
-          <mesh key={i} position={[x, 0.6, 0]} rotation={[0, 0, Math.PI / 2]}>
-            <cylinderGeometry args={[0.55, 0.55, 1.4, 16]} />
-            <meshStandardMaterial color="#475569" metalness={0.8} roughness={0.3} />
+      <group position={[0, 7.7, 27]}>
+        {[-2.2, 2.2].map((x, i) => (
+          <mesh key={i} position={[x, 0.4, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+            <cylinderGeometry args={[0.45, 0.45, 1.2, 12]} />
+            <meshStandardMaterial color="#87918d" metalness={0.6} roughness={0.5} />
           </mesh>
         ))}
       </group>
@@ -166,48 +240,36 @@ export const LargeShip: React.FC<LargeShipProps> = ({ position, shipSpeedKnots, 
       {/* ================================================================= */}
       {/* 2. REALISTIC STEPPED CONTAINER STACKS (AUTHENTIC CARGO PROFILE)   */}
       {/* ================================================================= */}
-      <group position={[0, 7.2, 6]}>
-        {[
-          // Forward Bay (Lower for bridge line-of-sight visibility)
-          { x: -3.6, z: 20, w: 5.4, h: 4.8, l: 12, color: '#00a3e0', label: 'MAERSK' },
-          { x: 3.6, z: 20, w: 5.4, h: 4.2, l: 12, color: '#008751', label: 'EVERGREEN' },
-
-          // Mid Bay 1 (Full 5-tier high stack)
-          { x: -3.6, z: 6, w: 5.4, h: 6.8, l: 14, color: '#ea580c', label: 'HAPAG-LLOYD' },
-          { x: 3.6, z: 6, w: 5.4, h: 6.4, l: 14, color: '#be185d', label: 'ONE' },
-
-          // Mid Bay 2 (Full 5-tier stack)
-          { x: -3.6, z: -8, w: 5.4, h: 6.6, l: 14, color: '#1e3a8a', label: 'CMA CGM' },
-          { x: 3.6, z: -8, w: 5.4, h: 6.8, l: 14, color: '#ca8a04', label: 'MSC' },
-
-          // Aft Bay (Stepped down in front of wheelhouse)
-          { x: -3.6, z: -18, w: 5.4, h: 5.2, l: 10, color: '#475569', label: 'GEN' },
-          { x: 3.6, z: -18, w: 5.4, h: 5.2, l: 10, color: '#dc2626', label: 'K-LINE' },
-
-          // Top Tier High-Cube row
-          { x: 0, z: 6, w: 12.6, h: 2.2, l: 26, color: '#e2e8f0', label: 'REEFER' },
-        ].map((c, i) => (
-          <group key={i} position={[c.x, c.h / 2, c.z]}>
-            {/* Main Container Stack */}
-            <mesh castShadow receiveShadow>
-              <boxGeometry args={[c.w, c.h, c.l]} />
-              <meshStandardMaterial color={c.color} roughness={0.65} metalness={0.25} />
-            </mesh>
-            {/* Corrugated Edge Line / Door Framing */}
-            <mesh position={[0, 0, -c.l / 2 - 0.02]}>
-              <planeGeometry args={[c.w * 0.9, c.h * 0.9]} />
-              <meshStandardMaterial color="#0f172a" roughness={0.8} />
-            </mesh>
-          </group>
-        ))}
-
-        {/* Lashing Bridges / Vertical Walkway Towers */}
-        {[-1, 13].map((z, zi) => (
-          <mesh key={`lashing-${zi}`} position={[0, 3.2, z]}>
-            <boxGeometry args={[13.6, 6.8, 0.4]} />
-            <meshStandardMaterial color="#334155" wireframe transparent opacity={0.35} />
+      <group position={[0, 7.8, 0]}>
+        {[-14, -2, 10, 21].flatMap((z, bay) =>
+          [-4.25, -1.42, 1.42, 4.25].flatMap((x, row) =>
+            Array.from({ length: bay === 3 ? 2 : 3 + ((bay + row) % 2) }, (_, tier) => {
+              const length = bay === 3 ? 8.2 : 11.2;
+              const colors = ['#9d5141', '#647d80', '#b28b52', '#52746a', '#d0c8b1', '#496172'];
+              return (
+                <group key={`${bay}-${row}-${tier}`} position={[x, 0.98 + tier * 2.04, z]}>
+                  <mesh castShadow receiveShadow>
+                    <boxGeometry args={[2.68, 1.96, length]} />
+                    <meshStandardMaterial color={colors[(bay * 3 + row + tier * 2) % colors.length]} map={corrugation} bumpMap={corrugation} bumpScale={0.035} roughness={0.78} metalness={0.18} />
+                  </mesh>
+                  {/* Door seam and locking bars remain legible at closer camera distances. */}
+                  {[-0.65, 0, 0.65].map(bar => (
+                    <mesh key={bar} position={[bar, 0, -length / 2 - 0.018]}>
+                      <boxGeometry args={[0.035, 1.72, 0.035]} />
+                      <meshStandardMaterial color="#bdc1b5" roughness={0.65} metalness={0.4} />
+                    </mesh>
+                  ))}
+                </group>
+              );
+            })
+          )
+        )}
+        {[-6.95, 6.95].flatMap(x => [-26, -18, -10, -2, 6, 14].map(z => (
+          <mesh key={`${x}-${z}`} position={[x, 0.18, z]}>
+            <cylinderGeometry args={[0.04, 0.04, 0.75, 4]} />
+            <meshStandardMaterial color="#b3b9b5" roughness={0.6} />
           </mesh>
-        ))}
+        )))}
       </group>
 
       {/* ================================================================= */}
@@ -217,34 +279,50 @@ export const LargeShip: React.FC<LargeShipProps> = ({ position, shipSpeedKnots, 
         {/* Main Accommodation Deckhouse (White with chamfered bridge wings) */}
         <mesh position={[0, 0, 0]} castShadow>
           <boxGeometry args={[13.4, 7.8, 8.5]} />
-          <meshStandardMaterial color="#f8fafc" roughness={0.25} metalness={0.15} />
+          <meshStandardMaterial color="#d9d9cd" roughness={0.65} metalness={0.15} />
         </mesh>
 
         {/* Rows of Cabin Portholes / Windows */}
-        {[-1.5, 1.5].map((y, yi) => (
-          <mesh key={yi} position={[0, y, 4.3]}>
-            <planeGeometry args={[12.2, 0.6]} />
-            <meshStandardMaterial color="#0284c7" roughness={0.1} metalness={0.9} />
-          </mesh>
+        {[-1, 1].map(side => (
+          <React.Fragment key={`cabins-${side}`}>
+            <mesh position={[0, 0, side * 4.27]} rotation={[0, side === 1 ? 0 : Math.PI, 0]}>
+              <planeGeometry args={[12.4, 6.8]} />
+              <meshStandardMaterial map={markings.cabins} transparent alphaTest={0.2} roughness={0.4} metalness={0.15} />
+            </mesh>
+            <mesh position={[side * 6.72, 0, 0]} rotation={[0, side * Math.PI / 2, 0]}>
+              <planeGeometry args={[7.7, 6.8]} />
+              <meshStandardMaterial map={markings.cabins} transparent alphaTest={0.2} roughness={0.4} metalness={0.15} />
+            </mesh>
+          </React.Fragment>
         ))}
 
         {/* Navigating Bridge Wings (Aerodynamically flared over ship's beam) */}
         <group position={[0, 4.8, 0.6]}>
           <mesh castShadow>
             <boxGeometry args={[18.8, 2.2, 3.8]} />
-            <meshStandardMaterial color="#f1f5f9" roughness={0.2} />
+            <meshStandardMaterial color="#d9d9cd" roughness={0.55} />
+          </mesh>
+          <mesh position={[0, 0.2, -1.92]} rotation={[0, Math.PI, 0]}>
+            <planeGeometry args={[18.2, 1.6]} />
+            <meshStandardMaterial map={markings.bridge} transparent alphaTest={0.2} roughness={0.3} metalness={0.2} />
           </mesh>
           {/* Panoramic Tinted Anti-Glare Windows */}
           <mesh position={[0, 0.2, 1.95]}>
             <boxGeometry args={[18.4, 1.2, 0.2]} />
             <meshStandardMaterial
-              color="#0284c7"
+              color="#36535e"
               roughness={0.05}
               metalness={0.95}
               transparent
               opacity={0.85}
             />
           </mesh>
+          {Array.from({ length: 13 }, (_, i) => (
+            <mesh key={`bridge-frame-${i}`} position={[-8.7 + i * 1.45, 0.2, 2.08]}>
+              <boxGeometry args={[0.1, 1.25, 0.08]} />
+              <meshStandardMaterial color="#cbd0c6" roughness={0.6} />
+            </mesh>
+          ))}
           {/* Orange Lifebuoys on Bridge Wing Rails */}
           {[-9.2, 9.2].map((x, i) => (
             <mesh key={`lifebuoy-${i}`} position={[x, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
@@ -256,16 +334,16 @@ export const LargeShip: React.FC<LargeShipProps> = ({ position, shipSpeedKnots, 
           {/* Port/Starboard Bridge Wing Navigation Lanterns */}
           <mesh position={[-9.5, 0.4, 0]}>
             <sphereGeometry args={[0.2, 8, 8]} />
-            <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={isNight ? 5 : 2} />
+            <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={isNight ? 2 : 0.3} />
           </mesh>
           <mesh position={[9.5, 0.4, 0]}>
             <sphereGeometry args={[0.2, 8, 8]} />
-            <meshStandardMaterial color="#22c55e" emissive="#22c55e" emissiveIntensity={isNight ? 5 : 2} />
+            <meshStandardMaterial color="#22c55e" emissive="#22c55e" emissiveIntensity={isNight ? 2 : 0.3} />
           </mesh>
 
           {/* Night Bridge Interior Glow */}
           {isNight && (
-            <pointLight position={[0, 0.4, 0.5]} color="#00f0ff" intensity={3.5} distance={15} />
+            <pointLight position={[0, 0.4, 0.5]} color="#e4c899" intensity={1.4} distance={8} />
           )}
         </group>
 
@@ -293,7 +371,7 @@ export const LargeShip: React.FC<LargeShipProps> = ({ position, shipSpeedKnots, 
           <group ref={radarMainRef} position={[0, 2.5, 0]}>
             <mesh>
               <boxGeometry args={[3.8, 0.35, 0.4]} />
-              <meshStandardMaterial color="#00f0ff" emissive="#00f0ff" emissiveIntensity={0.8} />
+              <meshStandardMaterial color="#d4d6cc" roughness={0.6} />
             </mesh>
           </group>
           {/* Spinning S-Band Scanner */}
@@ -320,7 +398,7 @@ export const LargeShip: React.FC<LargeShipProps> = ({ position, shipSpeedKnots, 
           </mesh>
           <mesh position={[0, 1.6, 0]}>
             <boxGeometry args={[3.85, 1.2, 3.25]} />
-            <meshStandardMaterial color="#0284c7" roughness={0.3} />
+            <meshStandardMaterial color="#36535e" roughness={0.3} />
           </mesh>
           {[-0.8, 0.8].map((x, i) => (
             <mesh key={i} position={[x, 3.9, 0]}>
@@ -340,14 +418,14 @@ export const LargeShip: React.FC<LargeShipProps> = ({ position, shipSpeedKnots, 
           <cylinderGeometry args={[0.55, 0.7, 1.3, 16]} />
           <meshStandardMaterial color="#facc15" metalness={0.8} roughness={0.2} />
         </mesh>
-        <pointLight color="#facc15" intensity={2.0} distance={8} />
+
       </group>
 
       {/* Transom Stern White Navigation Light (COLREGs Rule 23) */}
       <group position={[0, 4.2, -35.2]}>
         <mesh>
           <sphereGeometry args={[0.22, 8, 8]} />
-          <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={isNight ? 5 : 2} />
+          <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={isNight ? 2 : 0.3} />
         </mesh>
         {isNight && (
           <pointLight color="#ffffff" intensity={2.5} distance={15} />
@@ -362,15 +440,17 @@ export const LargeShip: React.FC<LargeShipProps> = ({ position, shipSpeedKnots, 
         </mesh>
         <group ref={propRef} position={[0, 0, -1.2]}>
           {[0, 72, 144, 216, 288].map((deg, i) => (
-            <mesh key={i} rotation={[0, 0.35, (deg * Math.PI) / 180]} position={[0, 1.5, 0]}>
-              <boxGeometry args={[0.55, 2.6, 0.18]} />
-              <meshStandardMaterial color="#d97706" metalness={0.92} roughness={0.18} />
-            </mesh>
+            <group key={i} rotation={[0, 0, (deg * Math.PI) / 180]}>
+              <mesh rotation={[0, 0.35, 0]} position={[0, 1.5, 0]}>
+                <boxGeometry args={[0.55, 2.6, 0.18]} />
+                <meshStandardMaterial color="#aa8545" metalness={0.8} roughness={0.32} />
+              </mesh>
+            </group>
           ))}
         </group>
         <mesh position={[0, 0, -3.2]}>
           <boxGeometry args={[0.4, 4.5, 2.2]} />
-          <meshStandardMaterial color="#881337" roughness={0.6} />
+          <meshStandardMaterial color="#733e37" roughness={0.6} />
         </mesh>
       </group>
     </group>

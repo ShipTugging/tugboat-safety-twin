@@ -19,16 +19,16 @@ export const VisionAIFeed: React.FC<VisionAIFeedProps> = ({ telemetry }) => {
             <Eye size={15} />
           </div>
           <span className="font-mono text-xs font-bold text-slate-100 tracking-wider">
-            VISION AI 광학 & LiDAR 모니터링 피드
+            가상 센서 시각화
           </span>
         </div>
         <div className="flex items-center gap-2 font-mono text-[11px]">
           <span className="flex items-center gap-1 text-emerald-400 font-semibold">
             <ShieldCheck size={13} />
-            YOLOv9-해양특화모델
+            합성 화면
           </span>
           <span className="text-slate-600">|</span>
-          <span className="text-cyan-300 font-bold">인식 신뢰도: {telemetry.aiDetectionConfidence.toFixed(1)}%</span>
+          <span className="text-cyan-300 font-bold">가상 신뢰도: {telemetry.aiDetectionConfidence.toFixed(1)}%</span>
         </div>
       </div>
 
@@ -117,7 +117,7 @@ export const VisionAIFeed: React.FC<VisionAIFeedProps> = ({ telemetry }) => {
         {/* Top-right Status Pill */}
         <div className="absolute top-2 right-2 z-20 flex items-center gap-1.5 bg-black/80 px-2 py-0.5 rounded text-[10px] font-mono border border-slate-700 text-slate-300">
           <Cpu size={12} className="text-cyan-400" />
-          <span>FPS: 60 &bull; 처리지연: 8ms</span>
+          <span>실제 카메라 미연결</span>
         </div>
       </div>
     </div>

@@ -9,12 +9,15 @@ interface TacticalRadarProps {
 
 export const TacticalRadar: React.FC<TacticalRadarProps> = ({ telemetry, inWashZone }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const latest = useRef({ telemetry, inWashZone });
+  latest.current = { telemetry, inWashZone };
   const sweepAngleRef = useRef<number>(0);
 
   useEffect(() => {
     let animId: number;
 
     const render = () => {
+      const { telemetry, inWashZone } = latest.current;
       const canvas = canvasRef.current;
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
@@ -23,11 +26,12 @@ export const TacticalRadar: React.FC<TacticalRadarProps> = ({ telemetry, inWashZ
       const w = canvas.width;
       const h = canvas.height;
       const cx = w / 2;
-      const cy = h / 2 + 10; // offset slightly for aft view
-      const scale = 1.35; // pixels per meter
+      const cy = h * .35; // offset slightly for aft view
+      const scale = 1; // pixels per meter
 
       // Fade clear for persistence phosphor trail
-      ctx.fillStyle = 'rgba(5, 11, 20, 0.25)';
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#0d212b';
       ctx.fillRect(0, 0, w, h);
 
       // Advance radar sweep angle
@@ -38,14 +42,14 @@ export const TacticalRadar: React.FC<TacticalRadarProps> = ({ telemetry, inWashZ
       [20, 40, 60].forEach((r) => {
         ctx.beginPath();
         ctx.arc(cx, cy, r * scale, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(0, 240, 255, 0.18)';
+        ctx.strokeStyle = 'rgba(116, 185, 177, 0.18)';
         ctx.lineWidth = 1;
         ctx.setLineDash([3, 3]);
         ctx.stroke();
         ctx.setLineDash([]);
 
         // Ring label
-        ctx.fillStyle = 'rgba(0, 240, 255, 0.5)';
+        ctx.fillStyle = 'rgba(116, 185, 177, 0.5)';
         ctx.font = '9px monospace';
         ctx.fillText(`${r}m`, cx + r * scale - 18, cy - 3);
       });
@@ -56,7 +60,7 @@ export const TacticalRadar: React.FC<TacticalRadarProps> = ({ telemetry, inWashZ
       ctx.lineTo(cx, h - 10);
       ctx.moveTo(10, cy);
       ctx.lineTo(w - 10, cy);
-      ctx.strokeStyle = 'rgba(0, 240, 255, 0.15)';
+      ctx.strokeStyle = 'rgba(116, 185, 177, 0.15)';
       ctx.lineWidth = 1;
       ctx.stroke();
 
@@ -75,9 +79,9 @@ export const TacticalRadar: React.FC<TacticalRadarProps> = ({ telemetry, inWashZ
 
       // 3. Large Ship Blip (Post-Panamax Hull)
       ctx.save();
-      ctx.fillStyle = '#38bdf8';
-      ctx.shadowColor = '#00f0ff';
-      ctx.shadowBlur = 6;
+      ctx.fillStyle = '#85b5b6';
+      ctx.shadowColor = '#85b5b6';
+      ctx.shadowBlur = 0;
       // Hull centered at (cx, cy)
       const shipW = 14 * scale;
       const shipL = 68 * scale;
@@ -98,22 +102,24 @@ export const TacticalRadar: React.FC<TacticalRadarProps> = ({ telemetry, inWashZ
       const tugX = cx + telemetry.tugPosition[0] * scale;
       const tugY = cy - telemetry.tugPosition[2] * scale; // invert Z
 
+      ctx.save();
       ctx.beginPath();
       ctx.moveTo(shipChockX, shipChockY);
       ctx.lineTo(tugX, tugY);
-      ctx.strokeStyle = telemetry.girtingStatus === 'CRITICAL' ? '#ff1744' : '#00e676';
+      ctx.strokeStyle = telemetry.girtingStatus === 'CRITICAL' ? '#ff1744' : '#bdccb4';
       ctx.lineWidth = 2;
-      ctx.shadowColor = telemetry.girtingStatus === 'CRITICAL' ? '#ff1744' : '#00e676';
-      ctx.shadowBlur = 8;
-      ctx.stroke();
+      ctx.shadowColor = telemetry.girtingStatus === 'CRITICAL' ? '#ff1744' : '#bdccb4';
+      ctx.shadowBlur = 0;
+      if (!telemetry.emergencyReleaseTriggered) ctx.stroke();
+      ctx.restore();
 
       // 5. Tugboat Blip
       ctx.save();
       ctx.translate(tugX, tugY);
       ctx.rotate(-telemetry.tugRotation[1]); // tug heading
-      ctx.fillStyle = telemetry.girtingStatus === 'CRITICAL' ? '#ff1744' : '#f97316';
-      ctx.shadowColor = telemetry.girtingStatus === 'CRITICAL' ? '#ff1744' : '#f97316';
-      ctx.shadowBlur = 10;
+      ctx.fillStyle = telemetry.girtingStatus === 'CRITICAL' ? '#ff1744' : '#d3a079';
+      ctx.shadowColor = telemetry.girtingStatus === 'CRITICAL' ? '#ff1744' : '#d3a079';
+      ctx.shadowBlur = 2;
       // Draw tugboat contour
       ctx.beginPath();
       ctx.arc(0, -5 * scale, 2.5 * scale, Math.PI, 0, false); // rounded bow
@@ -128,8 +134,8 @@ export const TacticalRadar: React.FC<TacticalRadarProps> = ({ telemetry, inWashZ
       const sweepX = cx + Math.cos(sweep) * 90 * scale;
       const sweepY = cy + Math.sin(sweep) * 90 * scale;
       const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 90 * scale);
-      grad.addColorStop(0, 'rgba(0, 240, 255, 0.4)');
-      grad.addColorStop(1, 'rgba(0, 240, 255, 0.0)');
+      grad.addColorStop(0, 'rgba(116, 185, 177, 0.4)');
+      grad.addColorStop(1, 'rgba(116, 185, 177, 0.0)');
       
       ctx.beginPath();
       ctx.moveTo(cx, cy);
@@ -142,7 +148,7 @@ export const TacticalRadar: React.FC<TacticalRadarProps> = ({ telemetry, inWashZ
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.lineTo(sweepX, sweepY);
-      ctx.strokeStyle = 'rgba(0, 240, 255, 0.9)';
+      ctx.strokeStyle = 'rgba(116, 185, 177, 0.9)';
       ctx.lineWidth = 1.5;
       ctx.stroke();
       ctx.restore();
@@ -152,30 +158,30 @@ export const TacticalRadar: React.FC<TacticalRadarProps> = ({ telemetry, inWashZ
 
     render();
     return () => cancelAnimationFrame(animId);
-  }, [telemetry, inWashZone]);
+  }, []);
 
   return (
     <div className="bg-marine-900/90 border border-slate-700/80 rounded-lg p-3 flex flex-col gap-2 backdrop-blur-md shadow-lg">
       <div className="flex items-center justify-between border-b border-slate-800 pb-1.5 font-mono text-[11px]">
         <span className="flex items-center gap-1.5 font-bold text-slate-200">
           <Radio size={13} className="text-cyan-400 animate-pulse" />
-          2D 항만 전술 레이더 (PPI Tactical Radar)
+          항만 전술 레이더
         </span>
-        <span className="text-cyan-400 text-[10px] font-semibold">RANGE: 75m &bull; 360° SWEEP</span>
+        <span className="text-cyan-400 text-[10px] font-semibold">RANGE: 90m &bull; 360° SWEEP</span>
       </div>
 
-      <div className="relative w-full h-48 bg-slate-950 rounded-lg border border-slate-800 flex items-center justify-center overflow-hidden">
+      <div className="relative w-full h-56 bg-slate-950 rounded-lg border border-slate-800 flex items-center justify-center overflow-hidden">
         <canvas
           ref={canvasRef}
           width={280}
-          height={190}
+          height={220}
           className="w-full h-full object-contain"
         />
 
         {/* Legend overlays */}
         <div className="absolute bottom-1.5 left-2 flex items-center gap-3 text-[9px] font-mono bg-black/75 px-2 py-0.5 rounded border border-slate-800 text-slate-300">
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-sm bg-sky-400" /> 본선(66K)
+            <span className="w-2 h-2 rounded-sm bg-sky-400" /> 본선
           </span>
           <span className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-sm bg-amber-500" /> 예인선

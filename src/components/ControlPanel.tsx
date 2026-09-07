@@ -24,7 +24,7 @@ interface ControlPanelProps {
   onOpenVerificationModal: () => void;
 }
 
-const KOREAN_PRESETS: ScenarioPreset[] = [
+export const KOREAN_PRESETS: ScenarioPreset[] = [
   {
     id: 'NORMAL_ESCORT',
     name: '정상 호위 모드',
@@ -41,7 +41,7 @@ const KOREAN_PRESETS: ScenarioPreset[] = [
     id: 'GIRTING_CRISIS',
     name: '거팅(전복) 위기',
     badge: '전복 위험',
-    description: '예인선이 68°로 급선회하여 횡인장력으로 24° 전복 롤링 발생, 퀵 릴리즈 발동 직전입니다.',
+    description: '68° 조향으로 횡인장과 선체 기울기 변화를 관찰합니다.',
     params: {
       tugSteeringAngle: 68,
       towLineLength: 26,
@@ -64,8 +64,8 @@ const KOREAN_PRESETS: ScenarioPreset[] = [
   {
     id: 'SUCTION_NEAR_MISS',
     name: '선체 유체 흡인력',
-    badge: '충돌 위험',
-    description: '본선 현측 3.5m로 근접하여 베르누이 흡인력(210 kN)으로 빨려 들어가는 상태입니다.',
+    badge: '근접 관찰',
+    description: '예인줄을 14m로 줄여 이격 거리와 흡인력 변화를 관찰합니다.',
     params: {
       tugSteeringAngle: -22,
       towLineLength: 14,
@@ -91,7 +91,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             <Sliders size={15} />
           </div>
           <span className="font-mono text-xs font-bold text-slate-100 tracking-wider">
-            운항 파라미터 제어기 & 시나리오 벤치마크
+            세부 조작
           </span>
         </div>
 
@@ -125,9 +125,9 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
       {/* Preset Scenario Quick Selectors */}
       <div className="flex flex-col gap-1.5">
         <span className="font-mono text-[11px] text-slate-300 font-semibold uppercase tracking-wider">
-          심사위원 평가 시나리오 원클릭 실행:
+          운항 시나리오
         </span>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 grid-cols-1 gap-2">
           {KOREAN_PRESETS.map((preset) => (
             <button
               key={preset.id}
@@ -166,13 +166,13 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
       </div>
 
       {/* Interactive Sliders Grid with Quick-Action Buttons */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+      <div className="grid grid-cols-1 grid-cols-1 gap-3.5 pt-1">
         {/* Slider 1: Tugboat Steering Angle (-90° to +90°) */}
         <div className="flex flex-col gap-1.5 bg-slate-950/70 p-2.5 rounded-lg border border-slate-800">
           <div className="flex justify-between items-center text-xs font-mono">
             <span className="flex items-center gap-1.5 text-slate-200 font-medium">
               <Compass size={14} className="text-cyan-400" />
-              예인선 조향각 (Steering)
+              예인선 조향각
             </span>
             <span className="font-bold text-cyan-300 bg-cyan-500/15 px-2 py-0.5 rounded border border-cyan-400/30">
               {params.tugSteeringAngle > 0 ? `+${params.tugSteeringAngle}° (우현)` : `${params.tugSteeringAngle}° (좌현)`}
@@ -180,6 +180,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           </div>
           <input
             type="range"
+            aria-label="예인선 조향각"
             min="-90"
             max="90"
             step="1"
@@ -229,7 +230,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           <div className="flex justify-between items-center text-xs font-mono">
             <span className="flex items-center gap-1.5 text-slate-200 font-medium">
               <Zap size={14} className="text-amber-400" />
-              예인줄 길이 (Towline Length)
+              예인줄 길이
             </span>
             <span className="font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded border border-amber-400/30">
               {params.towLineLength} m
@@ -237,6 +238,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           </div>
           <input
             type="range"
+            aria-label="예인줄 길이"
             min="10"
             max="60"
             step="1"
@@ -250,7 +252,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               onClick={() => onChangeParams({ towLineLength: 14 })}
               className="px-2 py-0.5 bg-red-950/50 hover:bg-red-900/60 border border-red-500/30 text-red-300 text-[10px] font-mono rounded"
             >
-              14m (흡인위험)
+              14m (근접)
             </button>
             <button
               onClick={() => onChangeParams({ towLineLength: 32 })}
@@ -272,7 +274,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           <div className="flex justify-between items-center text-xs font-mono">
             <span className="flex items-center gap-1.5 text-slate-200 font-medium">
               <Flame size={14} className="text-rose-400" />
-              대형선 본선 속력 (Ship Speed)
+              본선 속력
             </span>
             <span className="font-bold text-rose-300 bg-rose-500/15 px-2 py-0.5 rounded border border-rose-400/30">
               {params.shipSpeed} 노트 (kts)
@@ -281,6 +283,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           <input
             type="range"
             min="0"
+            aria-label="본선 속력"
             max="14"
             step="0.5"
             value={params.shipSpeed}
@@ -315,7 +318,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           <div className="flex justify-between items-center text-xs font-mono">
             <span className="flex items-center gap-1.5 text-slate-200 font-medium">
               <Wind size={14} className="text-teal-400" />
-              선미 스크루 RPM (Propeller Wash)
+              추진기 회전수
             </span>
             <span className="font-bold text-teal-300 bg-teal-500/15 px-2 py-0.5 rounded border border-teal-400/30">
               {params.propellerRpm} RPM
@@ -324,6 +327,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           <input
             type="range"
             min="0"
+            aria-label="추진기 회전수"
             max="120"
             step="5"
             value={params.propellerRpm}
@@ -355,12 +359,11 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
       </div>
 
       {/* Bottom Action Buttons */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-slate-800">
+      <div className="grid grid-cols-1 grid-cols-1 gap-3 pt-1 border-t border-slate-800">
         {/* Emergency Quick Release Button */}
         <button
           onClick={() => {
             onTriggerQuickRelease();
-            maritimeAudio.playQuickRelease();
           }}
           className={`py-2.5 px-4 rounded-lg font-mono text-xs font-black tracking-wider flex items-center justify-center gap-2 transition-all border shadow-lg ${
             params.quickReleaseActive
@@ -369,7 +372,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           }`}
         >
           <AlertOctagon size={16} />
-          {params.quickReleaseActive ? '비상 분리 완료 // 줄 끊김 (장력 0kN)' : '비상 예인줄 즉시 분리 (QUICK RELEASE)'}
+          {params.quickReleaseActive ? '예인줄 재연결 (현재 분리됨)' : '비상 예인줄 즉시 분리 (QUICK RELEASE)'}
         </button>
 
         {/* Self-Verification Test Suite Runner */}
@@ -378,7 +381,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           className="py-2.5 px-4 rounded-lg font-mono text-xs font-bold tracking-wider flex items-center justify-center gap-2 bg-marine-800 hover:bg-marine-700 text-cyan-300 border border-cyan-400/50 hover:border-cyan-400 transition-all shadow-md"
         >
           <CheckCircle2 size={16} />
-          해양 안전 심사 자동 검증 실행
+          시나리오 점검
         </button>
       </div>
     </div>
