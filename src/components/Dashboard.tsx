@@ -23,7 +23,7 @@ export function Dashboard(props: DashboardProps) {
   const [tab, setTab] = useState<'overview' | 'radar' | 'chart' | 'sensors'>('overview');
   const critical = t.girtingStatus === 'CRITICAL' || t.suctionStatus === 'CRITICAL';
   const anchors = getTowlineAnchors(t);
-  const sag = computeSagMetrics(anchors.start, anchors.end, params.towLineLength, t.lineTensionKn, t.girtingStatus, params.ropeSlackM ?? 0);
+  const sag = computeSagMetrics(anchors.start, anchors.end, params.towLineLength, t.lineTensionKn, t.girtingStatus, params.ropeSlackM);
   const risks = [
     { name: '거팅 · 전복', value: t.girtingRiskPct, note: `횡경사 ${t.imuRollDeg.toFixed(1)}°`, danger: t.girtingStatus === 'CRITICAL' },
     { name: '선체 흡인', value: t.suctionRiskPct, note: `흡인력 ${t.suctionForceKn} kN`, danger: t.suctionStatus === 'CRITICAL' },

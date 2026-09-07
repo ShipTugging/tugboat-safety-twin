@@ -26,7 +26,7 @@ export const TowingLine: React.FC<TowingLineProps> = ({
   girtingStatus,
   quickReleaseActive,
   lineLength,
-  ropeSlackM = 0,
+  ropeSlackM,
   ropeColor = '#d8c4a0',
   ropeRadius = DEFAULT_ROPE_RADIUS,
   datasetMode=false,

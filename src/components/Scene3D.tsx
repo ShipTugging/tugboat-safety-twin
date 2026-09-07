@@ -87,7 +87,7 @@ export function Scene3D({ params, telemetry, onUpdatePhysics, onSelectCamera, on
   const hasAlert = girting || suction || telemetry.inWashZone;
   const tugRef=useRef<THREE.Group>(null), shipRef=useRef<THREE.Group>(null), ropeRef=useRef<THREE.Mesh>(null);
   const anchors=getTowlineAnchors(telemetry);
-  const sag=computeSagMetrics(anchors.start,anchors.end,params.towLineLength,telemetry.lineTensionKn,telemetry.girtingStatus,params.ropeSlackM??0);
+  const sag=computeSagMetrics(anchors.start,anchors.end,params.towLineLength,telemetry.lineTensionKn,telemetry.girtingStatus,params.ropeSlackM);
   return <div className="scene-viewport">
     <Canvas shadows={quality === 'high'} dpr={quality === 'high' ? [1, 1.5] : 1} gl={{antialias:true,alpha:false,preserveDrawingBuffer:true,powerPreference:'high-performance',toneMapping:THREE.ACESFilmicToneMapping,toneMappingExposure:1.1}}>
       <PerspectiveCamera makeDefault position={[76,48,-100]} fov={43} near={.3} far={1800}/>
