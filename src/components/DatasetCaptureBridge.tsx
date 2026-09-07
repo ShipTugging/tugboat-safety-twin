@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { Box3, Mesh, Object3D, PerspectiveCamera, Raycaster, Vector2, Vector3 } from 'three';
-import { applyDatasetCamera } from '../dataset/camera';
+import { Box3, Color, Curve, LessEqualDepth, Mesh, MeshBasicMaterial, NoToneMapping, Object3D, PerspectiveCamera, Raycaster, Scene, Vector2, Vector3, WebGLRenderer } from 'three';
+import { applyDatasetCamera, isOnboardCamera } from '../dataset/camera';
 import { projectBoxToYolo } from '../dataset/projection';
+import { boxToPolygon, estimateSag2D, projectRopeSegmentation } from '../dataset/segmentation';
 import type { CaptureSample, CapturedFrame, FrameLabel, SceneCaptureApi } from '../dataset/types';
+import type { SagMetrics } from '../simulation/towline';
 
 interface Props {
   sample:CaptureSample|null;
@@ -47,10 +49,69 @@ function hasVisibleSurface(target:Object3D,box:Box3,camera:PerspectiveCamera,occ
   return false;
 }
 
+/** Centerline sample is visible when the first surface along its ray is the rope tube itself. */
+function ropeVisibility(rope:Mesh,camera:PerspectiveCamera,occluders:Object3D[]) {
+  const ray=new Raycaster(), direction=new Vector3();
+  return (point:Vector3)=>{
+    direction.subVectors(point,camera.position);
+    const distance=direction.length();
+    ray.set(camera.position,direction.normalize());ray.near=camera.near;ray.far=distance+.05;
+    const hit=ray.intersectObjects(occluders,true)[0];
+    return !hit||hit.object===rope||hit.point.distanceTo(point)<.3;
+  };
+}
+
+/**
+ * Pixel-exact rope mask: fill the depth buffer with the whole scene in black,
+ * then draw only the rope in white with a less-or-equal depth test so hidden
+ * rope pixels stay black. Sky, fog, tone mapping and sprites are disabled.
+ */
+function renderRopeMask(gl:WebGLRenderer,scene:Scene,camera:PerspectiveCamera,rope:Mesh,black:MeshBasicMaterial,white:MeshBasicMaterial,maskScene:Scene,maskMesh:Mesh):string {
+  const saved={background:scene.background,fog:scene.fog,override:scene.overrideMaterial,tone:gl.toneMapping,autoClear:gl.autoClear,clear:gl.getClearColor(new Color()),alpha:gl.getClearAlpha()};
+  const hidden:Object3D[]=[];
+  scene.traverse(object=>{const o=object as Object3D&{isPoints?:boolean;isSprite?:boolean;isLine?:boolean};if((o.isPoints||o.isSprite||o.isLine)&&o.visible){o.visible=false;hidden.push(o);}});
+  try {
+    scene.background=null;scene.fog=null;scene.overrideMaterial=black;
+    gl.toneMapping=NoToneMapping;gl.setClearColor(0x000000,1);gl.autoClear=true;
+    gl.render(scene,camera);
+    maskMesh.geometry=rope.geometry;maskMesh.matrixWorld.copy(rope.matrixWorld);
+    gl.autoClear=false;
+    gl.render(maskScene,camera);
+    return gl.domElement.toDataURL('image/png');
+  } finally {
+    hidden.forEach(o=>{o.visible=true;});
+    scene.background=saved.background;scene.fog=saved.fog;scene.overrideMaterial=saved.override;
+    gl.toneMapping=saved.tone;gl.autoClear=saved.autoClear;gl.setClearColor(saved.clear,saved.alpha);
+    maskMesh.geometry=undefined as unknown as Mesh['geometry'];
+  }
+}
+
+/** Optional blur/exposure augmentation on the exported frame only. */
+function encodeJpeg(source:HTMLCanvasElement,blurPx:number|undefined):string {
+  if(!blurPx||blurPx<=0) return source.toDataURL('image/jpeg',.9);
+  const canvas=document.createElement('canvas');
+  canvas.width=source.width;canvas.height=source.height;
+  const ctx=canvas.getContext('2d');
+  if(!ctx||!('filter' in ctx)) return source.toDataURL('image/jpeg',.9);
+  ctx.filter=`blur(${blurPx.toFixed(2)}px)`;
+  ctx.drawImage(source,0,0);
+  return canvas.toDataURL('image/jpeg',.9);
+}
+
 export function DatasetCaptureBridge({sample,tug,ship,rope,onReady}:Props) {
   const {gl,scene,camera}=useThree();
   const pending=useRef<Pending|null>(null);
   const captureCamera=useMemo(()=>new PerspectiveCamera(),[]);
+  const maskResources=useMemo(()=>{
+    const black=new MeshBasicMaterial({color:0x000000,fog:false});
+    const white=new MeshBasicMaterial({color:0xffffff,fog:false,depthFunc:LessEqualDepth});
+    const maskScene=new Scene();
+    const maskMesh=new Mesh(undefined,white);
+    maskMesh.matrixAutoUpdate=false;maskMesh.frustumCulled=false;
+    maskScene.add(maskMesh);
+    return {black,white,maskScene,maskMesh};
+  },[]);
+  useEffect(()=>()=>{maskResources.black.dispose();maskResources.white.dispose();},[maskResources]);
   useEffect(()=>{
     const fail=(error:Error)=>{const p=pending.current;pending.current=null;if(p){p.clean();p.reject(error);}};
     onReady({capture:(id,signal)=>new Promise((resolve,reject)=>{
@@ -79,15 +140,39 @@ export function DatasetCaptureBridge({sample,tug,ship,rope,onReady}:Props) {
       gl.setPixelRatio(1);gl.setSize(sample.width,sample.height,false);
       scene.updateMatrixWorld(true);
       gl.render(scene,captureCamera);
-      const jpeg=gl.domElement.toDataURL('image/jpeg',.9);
+      const jpeg=encodeJpeg(gl.domElement,sample.params.imageBlurPx);
       const labels:FrameLabel[]=[];
       const ocean=scene.getObjectByName('ocean-surface');
       const occluders=[ship.current,tug.current,...(rope.current?[rope.current]:[]),...(ocean?[ocean]:[])];
-      const add=(classId:number,target:Object3D,box:Box3)=>{
+      const add=(classId:number,target:Object3D,box:Box3,polygon=false)=>{
         const projected=projectBoxToYolo(box,captureCamera);
-        if(projected&&projected.width*sample.width>=1&&projected.height*sample.height>=1&&hasVisibleSurface(target,box,captureCamera,occluders))labels.push({classId,box:projected});
+        if(projected&&projected.width*sample.width>=1&&projected.height*sample.height>=1&&hasVisibleSurface(target,box,captureCamera,occluders)) {
+          labels.push({classId,box:projected,...(polygon?{polygon:boxToPolygon(projected)}:{})});
+        }
       };
-      const onboard=sample.params.cameraMode==='TUG_AFT_DECK'||sample.params.cameraMode==='TUG_BRIDGE';
+      const onboard=isOnboardCamera(sample.params.cameraMode);
+      const camera3={position:captureCamera.position.toArray(),quaternion:captureCamera.quaternion.toArray(),fov:captureCamera.fov,aspect:captureCamera.aspect,near:captureCamera.near,far:captureCamera.far};
+      if(sample.kind==='sag') {
+        let mask:string|undefined, sag:CapturedFrame['sag'];
+        if(rope.current&&!sample.params.quickReleaseActive) {
+          const data=rope.current.userData as {curve?:Curve<Vector3>;radius?:number;sag?:SagMetrics};
+          if(!data.curve||!data.sag||!data.radius) throw new Error('예인줄 곡선 정보가 준비되지 않았습니다.');
+          const visible=ropeVisibility(rope.current,captureCamera,occluders);
+          const segmentation=projectRopeSegmentation(data.curve,data.radius,captureCamera,sample.width,sample.height,visible);
+          const box=projectBoxToYolo(new Box3().setFromObject(rope.current,true),captureCamera);
+          for(const polygon of segmentation.polygons) {
+            labels.push({classId:data.sag.level,box:box??{xCenter:.5,yCenter:.5,width:1,height:1},polygon});
+          }
+          sag={truth:data.sag,image:estimateSag2D(segmentation.centerline),visibleFraction:segmentation.visibleFraction,ropeRadiusM:data.radius};
+          mask=renderRopeMask(gl,scene,captureCamera,rope.current,maskResources.black,maskResources.white,maskResources.maskScene,maskResources.maskMesh);
+        }
+        const sternBox=new Box3().setFromObject(ship.current,true);
+        sternBox.min.y=Math.max(sternBox.min.y,-.1);
+        sternBox.max.z=Math.min(sternBox.max.z,sample.telemetry.shipPosition[2]-21);
+        add(5,ship.current,sternBox,true);
+        p.resolve({jpeg,mask,labels,sag,camera:camera3});
+        return;
+      }
       if(!onboard)add(0,tug.current,new Box3().setFromObject(tug.current,true));
       if(rope.current&&!sample.params.quickReleaseActive) {
         add(Number(rope.current.userData.datasetClass),rope.current,new Box3().setFromObject(rope.current,true));
@@ -96,7 +181,7 @@ export function DatasetCaptureBridge({sample,tug,ship,rope,onReady}:Props) {
       sternBox.min.y=Math.max(sternBox.min.y,-.1);
       sternBox.max.z=Math.min(sternBox.max.z,sample.telemetry.shipPosition[2]-21);
       add(3,ship.current,sternBox);
-      p.resolve({jpeg,labels,camera:{position:captureCamera.position.toArray(),quaternion:captureCamera.quaternion.toArray(),fov:captureCamera.fov,aspect:captureCamera.aspect,near:captureCamera.near,far:captureCamera.far}});
+      p.resolve({jpeg,labels,camera:camera3});
     } catch(error) {p.reject(error instanceof Error?error:new Error('프레임 캡처 실패'));}
     finally {gl.setPixelRatio(oldDpr);gl.setSize(oldSize.x,oldSize.y,false);gl.render(scene,camera);}
   },1);

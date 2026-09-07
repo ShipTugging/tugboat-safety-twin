@@ -246,3 +246,19 @@ fieldset:disabled button,fieldset:disabled select,button:disabled { cursor:defau
 .dataset-image b { position:absolute; top:0; left:0; font-size:9px; background:#f1d28e; color:#17241e; padding:0 2px; }
 .dataset-preview small { display:block; font-size:9px; margin-top:5px; color:#90aaa4; }
 @media(max-width:760px) { .dataset-controls { scroll-margin-top:105px; } }
+.dataset-kind { display:flex; gap:6px; padding-top:12px; border:0; margin:0; }
+.dataset-kind button { flex:1; display:flex; align-items:center; justify-content:center; gap:6px; padding:8px 6px; font-size:10px; border:1px solid #3a5655; border-radius:5px; background:#102222; color:#a8bfbb; }
+.dataset-kind button[aria-pressed="true"] { background:#24443b; color:#d5eddf; border-color:#59977e; }
+.dataset-image svg { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+.dataset-mask { margin-top:6px; }
+.dataset-mask img { image-rendering:pixelated; }
+.sag-chip { display:inline-flex; align-items:center; gap:8px; align-self:flex-start; padding:7px 11px; border-radius:6px; font-size:10px; color:#dbeee6; background:#12282ae0; border:1px solid #3f6a63; pointer-events:none; }
+.sag-chip b { font-size:12px; color:#fff; }
+.sag-chip small { color:#9dbdb3; font-size:9px; }
+.sag-chip.level-0 { border-color:#7ee0a8; } .sag-chip.level-1 { border-color:#c9e07e; } .sag-chip.level-2 { border-color:#f1d28e; } .sag-chip.level-3 { border-color:#f0a25e; } .sag-chip.level-4 { border-color:#f57b73; background:#3a2321e0; }
+.sag-pipeline { display:grid; gap:8px; }
+.sag-pipeline .sag-scale { display:grid; grid-template-columns:repeat(5,1fr); gap:3px; }
+.sag-pipeline .sag-scale span { font-size:9px; text-align:center; padding:6px 2px; border-radius:4px; background:#0f1f22; color:#7f9a96; border:1px solid #23393c; }
+.sag-pipeline .sag-scale span.active { background:#24443b; color:#e4f2e9; border-color:#94d4ad; }
+.sag-pipeline dl { display:grid; grid-template-columns:1fr 1fr; gap:6px 10px; margin:0; font-size:10px; color:#a8bfbb; }
+.sag-pipeline dd { margin:0; color:#e4f2e9; font-weight:600; }

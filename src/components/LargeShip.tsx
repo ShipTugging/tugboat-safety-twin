@@ -8,9 +8,10 @@ interface LargeShipProps {
   position: [number, number, number];
   shipSpeedKnots: number;
   timeOfDay?: TimeOfDay;
+  hullColor?: string;
 }
 
-export const LargeShip: React.FC<LargeShipProps> = ({ position, shipSpeedKnots, timeOfDay = 'day' }) => {
+export const LargeShip: React.FC<LargeShipProps> = ({ position, shipSpeedKnots, timeOfDay = 'day', hullColor = '#3d5261' }) => {
   const isNight = timeOfDay === 'night';
   const radarMainRef = useRef<THREE.Group>(null);
   const radarSubRef = useRef<THREE.Group>(null);
@@ -188,7 +189,7 @@ export const LargeShip: React.FC<LargeShipProps> = ({ position, shipSpeedKnots, 
       {/* Upper Freeboard Curved Hull (Dark Marine Charcoal/Navy) */}
       <mesh geometry={hullGeometry} castShadow receiveShadow>
         <meshStandardMaterial
-          color="#3d5261"
+          color={hullColor}
           roughness={0.76}
           metalness={0.16}
         />

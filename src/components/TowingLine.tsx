@@ -1,7 +1,7 @@
 import React, { useMemo, useEffect } from 'react';
 import * as THREE from 'three';
 import { RiskLevel } from '../types/maritime';
-import { createTowlineCurve, getTowlineState } from '../simulation/towline';
+import { computeSagMetrics, createTowlineCurve, getTowlineState } from '../simulation/towline';
 
 interface TowingLineProps {
   start: [number, number, number]; // Ship chock
@@ -10,9 +10,14 @@ interface TowingLineProps {
   girtingStatus: RiskLevel;
   quickReleaseActive: boolean;
   lineLength: number;
+  ropeSlackM?: number;
+  ropeColor?: string;
+  ropeRadius?: number;
   datasetMode?: boolean;
   meshRef?: React.Ref<THREE.Mesh>;
 }
+
+export const DEFAULT_ROPE_RADIUS = 0.085;
 
 export const TowingLine: React.FC<TowingLineProps> = ({
   start,
@@ -21,40 +26,38 @@ export const TowingLine: React.FC<TowingLineProps> = ({
   girtingStatus,
   quickReleaseActive,
   lineLength,
+  ropeSlackM = 0,
+  ropeColor = '#d8c4a0',
+  ropeRadius = DEFAULT_ROPE_RADIUS,
   datasetMode=false,
   meshRef,
 }) => {
-  // Calculate curve points for catenary line
-  const { geometry, color, emissiveIntensity } = useMemo(() => {
+  // The curve, its sag metrics and the tube share one computation so labels
+  // always describe exactly the geometry that was rendered.
+  const { geometry, color, emissiveIntensity, userData } = useMemo(() => {
     const p1 = new THREE.Vector3(...start);
     const p2 = new THREE.Vector3(...end);
+    const curve = createTowlineCurve(p1,p2,lineLength,tensionKn,girtingStatus,ropeSlackM);
+    const sag = computeSagMetrics(p1,p2,lineLength,tensionKn,girtingStatus,ropeSlackM);
+    const geom = new THREE.TubeGeometry(curve, 64, ropeRadius, 8, false);
 
-    // Catenary sag depends inversely on tension
-    // Higher tension = straighter line; Lower tension = more sag
-    const curve = createTowlineCurve(p1,p2,lineLength,tensionKn,girtingStatus);
-    const geom = new THREE.TubeGeometry(curve, 64, 0.085, 8, false);
-
-    // Color logic
-    let lineColor = '#d8c4a0';
+    let lineColor = ropeColor;
     let intensity = 0;
-
     if (!datasetMode && girtingStatus === 'CRITICAL') {
       lineColor = '#ff1744';
       intensity = 2.0;
     } else if (!datasetMode && girtingStatus === 'WARNING') {
       lineColor = '#ffb020';
       intensity = 1.0;
-    } else {
-      lineColor = '#d8c4a0';
-      intensity = 0;
     }
 
     return {
       geometry: geom,
       color: lineColor,
       emissiveIntensity: intensity,
+      userData: { datasetClass: getTowlineState(tensionKn,girtingStatus)==='taut'?1:2, curve, radius: ropeRadius, sag },
     };
-  }, [start, end, tensionKn, girtingStatus, lineLength, datasetMode]);
+  }, [start, end, tensionKn, girtingStatus, lineLength, ropeSlackM, ropeColor, ropeRadius, datasetMode]);
 
   useEffect(() => () => geometry.dispose(), [geometry]);
   // If quick release activated, line is detached
@@ -78,7 +81,7 @@ export const TowingLine: React.FC<TowingLineProps> = ({
 
   return (
     <group>
-      <mesh ref={meshRef} geometry={geometry} userData={{datasetClass:getTowlineState(tensionKn,girtingStatus)==='taut'?1:2}}>
+      <mesh ref={meshRef} geometry={geometry} userData={userData}>
         <meshStandardMaterial
           color={color}
           emissive={color}

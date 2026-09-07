@@ -8,6 +8,7 @@ import { DatasetControls } from './DatasetControls';
 import type { DatasetController } from '../hooks/useDatasetExporter';
 import { ControlPanel } from './ControlPanel';
 import { ArrowUpRight, Crosshair, Activity, Radio, ChevronRight } from 'lucide-react';
+import { computeSagMetrics, getTowlineAnchors } from '../simulation/towline';
 
 interface DashboardProps {
   params: SimulationParams; telemetry: TelemetryState;
@@ -21,6 +22,8 @@ export function Dashboard(props: DashboardProps) {
   const { telemetry: t, params } = props;
   const [tab, setTab] = useState<'overview' | 'radar' | 'chart' | 'sensors'>('overview');
   const critical = t.girtingStatus === 'CRITICAL' || t.suctionStatus === 'CRITICAL';
+  const anchors = getTowlineAnchors(t);
+  const sag = computeSagMetrics(anchors.start, anchors.end, params.towLineLength, t.lineTensionKn, t.girtingStatus, params.ropeSlackM ?? 0);
   const risks = [
     { name: '거팅 · 전복', value: t.girtingRiskPct, note: `횡경사 ${t.imuRollDeg.toFixed(1)}°`, danger: t.girtingStatus === 'CRITICAL' },
     { name: '선체 흡인', value: t.suctionRiskPct, note: `흡인력 ${t.suctionForceKn} kN`, danger: t.suctionStatus === 'CRITICAL' },
@@ -47,7 +50,7 @@ export function Dashboard(props: DashboardProps) {
         </>}
         {tab === 'radar' && <div className="legacy-monitor"><TacticalRadar telemetry={t} inWashZone={t.inWashZone}/><p className="monitor-note">시뮬레이션 좌표 기반 전술 레이더</p></div>}
         {tab === 'chart' && <div className="legacy-monitor"><TelemetryChart telemetry={t}/><p className="monitor-note">이 탭을 연 이후의 시뮬레이션 추이</p></div>}
-        {tab === 'sensors' && <div className="sensor-details"><SensorGauges telemetry={t}/><VisionAIFeed telemetry={t}/></div>}
+        {tab === 'sensors' && <div className="sensor-details"><SensorGauges telemetry={t}/><VisionAIFeed telemetry={t} sag={sag} detached={params.quickReleaseActive}/></div>}
         <details className="control-details"><summary>운항 파라미터 <ChevronRight size={15}/></summary><fieldset disabled={props.dataset.busy}><ControlPanel {...props}/></fieldset></details>
       </div>
     </aside>

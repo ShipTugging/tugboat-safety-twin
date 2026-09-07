@@ -1,4 +1,4 @@
-export type CameraMode = 'orbit' | 'tugChase' | 'bridgeView' | 'topDown' | 'cinematic' | 'TUG_AFT_DECK' | 'TUG_BRIDGE';
+export type CameraMode = 'orbit' | 'tugChase' | 'bridgeView' | 'topDown' | 'cinematic' | 'TUG_AFT_DECK' | 'TUG_BRIDGE' | 'TUG_SAG_CAM';
 
 export type TimeOfDay = 'day' | 'sunset' | 'night';
 
@@ -18,6 +18,15 @@ export interface SimulationParams {
   waveStrength?: number;
   cameraFov?: number;
   cameraJitter?: [number, number, number];
+  /** Extra rope paid out beyond the physics span (m). Drives sag without moving the tug. */
+  ropeSlackM?: number;
+  ropeColor?: string;
+  ropeRadius?: number;
+  hullColor?: string;
+  /** [yaw, pitch, roll] degrees applied after the mount lookAt. */
+  cameraRotationJitter?: [number, number, number];
+  /** Gaussian blur applied to the exported JPEG only (px at 960x540). */
+  imageBlurPx?: number;
 }
 
 export interface TelemetryState {
