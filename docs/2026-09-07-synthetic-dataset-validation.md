@@ -42,3 +42,11 @@
 Box3 투영 방식은 부분 가림에서도 전체 경계상자를 사용하므로 특히 카메라 가까운 대각선 예인줄의 라벨이 넓을 수 있다. 샘플 표면 raycast로 완전 가림을 보수적으로 제거하지만 정밀 가시 면적/분할 마스크는 아니다. 짙은 안개·야간 시각 식별성은 실제 학습 전에 검토해야 한다. 도메인 무작위화는 현실 데이터 기반 검증이나 실제 학습 성능의 증명을 대체하지 않는다.
 
 다운로드 ZIP과 검토용 이미지들은 저장소 밖에서 검사했으며 Git에 포함하지 않는다. `.env` 및 키 파일은 커밋/배포 대상에서 제외한다.
+
+## 배포
+
+- 기능 커밋 `1a289e5`, GitHub `main` 및 `codex/synthetic-dataset`에 push.
+- Vercel production `dpl_vHK43BjRFrNVSmFEqdG4hg1tGqez`: READY.
+- 공개 주소: https://tugboat-safety-twin.vercel.app
+- 연결된 API에 빌드에 필요한 텍스트 소스만 UTF-8로 전송. `.env`, 테스트 다운로드, 이미지 검토 결과는 제외했다.
+- 공개 배포에서 생성 모드와 두 CCTV 옵션을 확인했고 3장 ZIP을 실제 생성·다운로드했다. 공개 브라우저 JavaScript/WebGL error/warn은 없었다.

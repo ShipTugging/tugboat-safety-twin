@@ -19,4 +19,4 @@
 - [x] 무작위화/줄 곡률/45·115RPM 경계 테스트.
 - [x] 브라우저: 100프레임 ZIP 실제 생성·라벨/이미지 페어 검증, CCTV/취소/복원/모바일 UI.
 - [x] 빌드·기존 물리 검사·독립 리뷰.
-- [ ] README/트러블슈팅 갱신, 민감정보 제외 GitHub push, Vercel READY 및 공개 화면 확인.
+- [x] README/트러블슈팅 갱신, 민감정보 제외 GitHub push, Vercel READY 및 공개 화면 확인.
