@@ -29,3 +29,7 @@ Sag 생성기의 `towPosition: astern` 하드코딩으로 운항 위치와 캡�
 - 라벨은 깨끗한 기하학적 정답이다. 실제 물방울의 굴절 왜곡이나 실제 학습 성능 검증을 구현한 것은 아니다.
 
 문서와 소스만 Git에 포함하며 테스트 ZIP/미리보기와 .env·인증정보는 업로드하지 않는다.
+
+## 배포 확인
+
+기능 커밋 `3b5db77`을 GitHub main에 반영했다. Vercel production `dpl_2tE2qLjCShtsgBuVTm2SgFMx2tAh`가 READY이며 기존 공개 주소에서 우현 + 물 튐 Sag 5장(L0~L4)을 생성·다운로드하고 검사했다. 공개 브라우저 JavaScript/WebGL 오류는 없었다.
