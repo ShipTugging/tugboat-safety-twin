@@ -1,4 +1,4 @@
-import type { SimulationParams, TelemetryState, TimeOfDay } from '../types/maritime';
+import type { SimulationParams, TelemetryState, TimeOfDay, TowPosition } from '../types/maritime';
 import { SAG_LEVEL_THRESHOLDS, getTowlineAnchors, solveRopeSlack } from '../simulation/towline';
 
 export const ROPE_COLORS=['#d8c4a0','#f0e6c8','#c9b27a','#e9e9e9','#8f8a7a','#d97b3a','#6b8fb8','#4d4d4d'] as const;
@@ -16,7 +16,7 @@ export function targetRatioForLevel(level:number,random:()=>number):number {
  * randomization: light, fog, sea, hull/rope appearance, rope thickness, camera
  * micro-pose, blur. Level cycles 0..4 so every batch covers all five bands.
  */
-export function randomizeSagScene(random:()=>number=Math.random,index=Math.floor(random()*600)):SimulationParams {
+export function randomizeSagScene(random:()=>number=Math.random,index=Math.floor(random()*600),towPosition:TowPosition='astern'):SimulationParams {
   const between=(a:number,b:number)=>a+(b-a)*random();
   const pick=<T,>(items:readonly T[])=>items[Math.floor(random()*items.length)];
   const level=index%5;
@@ -32,7 +32,7 @@ export function randomizeSagScene(random:()=>number=Math.random,index=Math.floor
     towLineLength:Math.round(between(16,maxLength)),
     shipSpeed:Math.round(between(hard?6:1,maxSpeed)*10)/10,
     propellerRpm:pick([0,45,80,115]),
-    cameraMode:'TUG_SAG_CAM',timeOfDay,towPosition:'astern',quickReleaseActive:false,soundEnabled:false,
+    cameraMode:'TUG_SAG_CAM',timeOfDay,towPosition,quickReleaseActive:false,soundEnabled:false,
     fogDensity:between(.0002,.012),sunIntensity:between(.7,1.35),waveStrength:between(.4,1.7),
     cameraFov:between(52,70),
     cameraJitter:[between(-.35,.35),between(-.25,.25),between(-.35,.35)],

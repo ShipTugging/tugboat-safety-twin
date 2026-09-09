@@ -27,7 +27,7 @@ export function App() {
   const [params, setParams] = useState<SimulationParams>(DEFAULT_PARAMS);
   const [isVerificationModalOpen, setIsVerificationModalOpen] = useState<boolean>(false);
   const [is3DFullscreen, setIs3DFullscreen] = useState<boolean>(false);
-  const dataset=useDatasetExporter();
+  const dataset=useDatasetExporter(params.towPosition??'astern');
 
   // Hydrodynamics & Sensor Fusion Hook
   const { telemetry, updatePhysics } = useMaritimePhysics(params);

@@ -5,8 +5,13 @@ import { settlePhysics } from '../simulation/physics';
 import { classNamesFor } from '../dataset/types';
 import type { CaptureSample, CapturedFrame, DatasetKind, SceneCaptureApi } from '../dataset/types';
 import type { frameMetadata } from '../dataset/archive';
+import type { TowPosition } from '../types/maritime';
+import { resolveCapturePosition, type CapturePosition } from '../dataset/position';
+import { randomizeLens, type LensSelection } from '../dataset/lens';
 
-export function useDatasetExporter() {
+export function useDatasetExporter(currentPosition:TowPosition='astern') {
+  const [capturePosition,setCapturePosition]=useState<CapturePosition>('current');
+  const [lensSelection,setLensSelection]=useState<LensSelection>('mixed');
   const [enabled,setEnabled]=useState(false);
   const [kind,setKind]=useState<DatasetKind>('sag');
   const [count,setCount]=useState(100);
@@ -41,6 +46,7 @@ export function useDatasetExporter() {
     const controller=new AbortController();abort.current=controller;
     const id=++runId.current;
     const runKind=kind;
+    const runPosition=capturePosition,runCurrentPosition=currentPosition,runLens=lensSelection;
     const classes=classNamesFor(runKind);
     const throwIfCancelled=()=>{if(controller.signal.aborted)throw new DOMException('취소됨','AbortError');};
     setBusy(true);setProgress(0);setStatus('준비 중');setError('');setArchiveBlob(null);setPreview(null);setClassCounts(classes.map(()=>0));
@@ -54,9 +60,12 @@ export function useDatasetExporter() {
       for(let index=0;index<count;index++) {
         throwIfCancelled();
         const time=60+index*.73+random()*30;
-        let params=runKind==='sag'?randomizeSagScene(random,index):randomizeEnvironment(random,index);
+        const towPosition=resolveCapturePosition(runPosition,runCurrentPosition,index);
+        let params=runKind==='sag'?randomizeSagScene(random,index,towPosition):{...randomizeEnvironment(random,index),towPosition};
         const telemetry=settlePhysics(params,time*1000);
         if(runKind==='sag') params=applySagTarget(params,telemetry,index,random);
+        // Lens sampling is independent of position and sag class.
+        params={...params,...randomizeLens(random,runLens)};
         const next:CaptureSample={id:`${id}:${index}`,index,kind:runKind,params,telemetry,time,width:960,height:540};
         setSample(next);setStatus(`${index+1} / ${count} 캡처`);
         const frame=await captureApi.current!.capture(next.id,controller.signal);
@@ -66,7 +75,7 @@ export function useDatasetExporter() {
         metadata.push(archive.frameMetadata(next,frame));
         frame.labels.forEach(label=>{if(label.classId<counts.length)counts[label.classId]++;});
         setProgress(Math.round((index+1)/count*90));
-        if(index===count-1) {setPreview(frame);setPreviewMode(params.cameraMode);}
+        if(index===count-1) {setPreview(frame);setPreviewMode(`${params.cameraMode} · ${towPosition} · ${params.lensCondition}`);}
       }
       archive.addManifest(zip,seed,metadata,runKind);
       setStatus('ZIP 생성 중');
@@ -89,6 +98,6 @@ export function useDatasetExporter() {
       if(mounted.current){setSample(null);setBusy(false);}
     }
   };
-  return {enabled,setEnabled,kind,setKind,count,setCount,seed,setSeed,busy,progress,status,error,sample,archiveBlob,archiveKind,preview,previewMode,classCounts,setCaptureApi,start,cancel,download};
+  return {enabled,setEnabled,kind,setKind,count,setCount,seed,setSeed,busy,progress,status,error,sample,archiveBlob,archiveKind,preview,previewMode,classCounts,setCaptureApi,start,cancel,download,capturePosition,setCapturePosition,currentPosition,lensSelection,setLensSelection};
 }
 export type DatasetController=ReturnType<typeof useDatasetExporter>;

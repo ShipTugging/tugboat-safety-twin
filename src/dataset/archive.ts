@@ -40,11 +40,12 @@ export function frameMetadata(sample:CaptureSample,frame:CapturedFrame) {
 }
 
 export function sagCsv(frames:ReturnType<typeof frameMetadata>[]):string {
-  const header='image,mask,sag_level,sag_ratio_3d,sag_m,span_m,sag_ratio_2d,visible_fraction,tension_kn,rope_slack_m,rope_length_m,time_of_day,fog_density,camera_fov';
+  const header='image,mask,sag_level,sag_ratio_3d,sag_m,span_m,sag_ratio_2d,visible_fraction,tension_kn,rope_slack_m,rope_length_m,time_of_day,fog_density,camera_fov,tow_position,lens_condition,blur_px,lens_wetness,lens_seed';
   const rows=frames.filter(f=>f.sag).map(f=>[
     f.image,f.mask??'',f.sag!.truth.level,f.sag!.truth.sagRatio.toFixed(5),f.sag!.truth.sagM.toFixed(3),f.sag!.truth.spanM.toFixed(3),
     f.sag!.image?f.sag!.image.ratio.toFixed(5):'',f.sag!.visibleFraction.toFixed(3),f.telemetry.lineTensionKn,
     (f.environment.ropeSlackM??0).toFixed(2),f.sag!.truth.ropeLengthM.toFixed(2),f.environment.timeOfDay,f.environment.fogDensity.toFixed(5),(f.environment.cameraFov??0).toFixed(1),
+    f.environment.towPosition??'astern',f.environment.lensCondition??'clear',f.environment.imageBlurPx??0,f.environment.lensWetness??0,f.environment.lensSeed??0,
   ].join(','));
   return [header,...rows].join('\n')+'\n';
 }
@@ -57,7 +58,9 @@ export function addManifest(zip:JSZip,seed:number,frames:ReturnType<typeof frame
     zip.file('sag_labels.csv',sagCsv(frames));
   }
   zip.file('metadata.json',JSON.stringify({
-    version:2,kind,seed,count:frames.length,classes,
+    version:3,kind,seed,count:frames.length,classes,
+    towPositions:[...new Set(frames.map(f=>f.environment.towPosition??'astern'))],
+    lensPolicy:'RGB-only Gaussian blur and seeded wet-lens droplets (local blur/glare, no spatial warp). Masks and Sag labels remain clean geometry ground truth; visible_fraction describes geometric occlusion, not optical visibility through droplets.',
     labelFormat:kind==='sag'?'YOLO-Seg polygons: class x1 y1 x2 y2 ... normalized. Towline polygons follow the visible tube silhouette (occluded runs removed by ray tests); Ship_Stern is a four-vertex box polygon.':'YOLO boxes: class x_center y_center width height normalized.',
     labelPolicy:kind==='sag'
       ?'Towline class = sag level of the rendered 3D curve (ratio = max chord deviation / chord length). masks/*.png are pixel-exact depth-tested renders of the rope (white = rope). Ego tug omitted; camera is the fixed port bridge-wing mount TUG_SAG_CAM.'

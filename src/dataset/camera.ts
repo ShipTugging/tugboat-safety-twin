@@ -54,9 +54,15 @@ export function applyDatasetCamera(camera:PerspectiveCamera,params:SimulationPar
     // when the line swings wide (large steering angles).
     camera.fov=Math.min(95,Math.max(params.cameraFov??60,requiredVerticalFov(camera,[start,end],aspect)*1.2));
   } else {
-    camera.position.set(76+jitter.x*50,48+jitter.y*40,-100+jitter.z*50);
+    const center=new Vector3().addVectors(new Vector3(...t.shipPosition),new Vector3(...t.tugPosition)).multiplyScalar(.5);
+    center.y=3;
+    const offsets={astern:[76,48,-75],port:[-80,60,-65],starboard:[80,60,65],ahead:[-70,60,95]} as const;
+    camera.position.copy(center).add(new Vector3(...offsets[params.towPosition??'astern'])).addScaledVector(jitter,30);
     camera.fov=params.cameraFov??43;
-    camera.lookAt(4,2,-17);
+    camera.lookAt(center);camera.updateMatrixWorld(true);
+    const bounds=[new Vector3(-8,0,-40),new Vector3(8,24,40),new Vector3(-8,24,40),new Vector3(8,0,-40)].map(p=>p.add(new Vector3(...t.shipPosition)));
+    bounds.push(new Vector3(...t.tugPosition).addScalar(7),new Vector3(...t.tugPosition).addScalar(-7));
+    camera.fov=Math.min(95,Math.max(camera.fov,requiredVerticalFov(camera,bounds,aspect)*1.12));
   }
   camera.aspect=aspect;
   camera.near=.15;

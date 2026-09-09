@@ -28,6 +28,9 @@ export interface SimulationParams {
   cameraRotationJitter?: [number, number, number];
   /** Gaussian blur applied to the exported JPEG only (px at 960x540). */
   imageBlurPx?: number;
+  lensCondition?: 'clear'|'blurred'|'wet';
+  lensWetness?: number;
+  lensSeed?: number;
   /** Where the tug operates around the main vessel. Defaults to astern. */
   towPosition?: TowPosition;
 }

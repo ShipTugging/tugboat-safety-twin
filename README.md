@@ -26,9 +26,13 @@
 
 우측 패널 **AI 데이터 생성 모드** → **예인줄 Sag 분할** → 이미지 수·시드 → **AI 데이터셋 캡처**. 기본 100장, 1~500장, 960×540.
 
+**캡처 위치**는 기본적으로 현재 운항 위치를 따릅니다. 선미·좌현·우현·선수를 직접 지정하거나 **네 방향 혼합**을 선택할 수 있습니다. 혼합 시 20장마다 네 방향 × Sag 5단계를 모두 포함합니다. 선택은 작업 시작 시 고정되며 완료·취소 후 기존 운항 설정과 카메라로 복귀합니다.
+
+**렌즈 상태**는 맑음·흐림·물 튐 또는 자동 혼합을 지원합니다. 흐림은 1~4px Gaussian blur, 물 튐은 전체 약한 흐림과 물방울 영역의 강한 흐림·반사광을 적용합니다. 이미지 좌표를 휘게 만들지는 않으므로 깨끗한 기하학적 마스크/Sag 정답은 유지됩니다. `metadata.json`과 `sag_labels.csv`에 `towPosition`, `lensCondition`, `imageBlurPx`, `lensWetness`, `lensSeed`를 기록합니다(CSV는 snake_case 열 이름).
+
 ```text
 towline_sag_seg_dataset.zip
-├─ images/frame_0001.jpg      JPEG(30% 확률 블러 증강)
+├─ images/frame_0001.jpg      JPEG(선택한 렌즈 상태 증강)
 ├─ labels/frame_0001.txt      YOLO-Seg 폴리곤: class x1 y1 x2 y2 ...
 ├─ masks/frame_0001.png       로프 픽셀 마스크(가림 반영, 흰색 = 로프)
 ├─ classes.txt / data.yaml    Ultralytics 학습 설정
@@ -46,7 +50,7 @@ towline_sag_seg_dataset.zip
 | 5 | Ship_Stern | 선미 영역 4점 박스 폴리곤 |
 
 - 인덱스 `i % 5`가 목표 단계다. 정착된 물리 상태의 현 길이·장력에 맞춰 여유 로프를 역산하므로 라벨은 렌더된 곡선과 정확히 일치한다.
-- 무작위화: 시간대·태양·안개·파고·상선 선체 색·로프 색·로프 두께·카메라 위치/회전 지터·FOV·블러.
+- 무작위화: 시간대·태양·안개·파고·상선 선체 색·로프 색·로프 두께·카메라 위치/회전 지터·FOV·렌즈 흐림·물 튐.
 - 마스크는 장면 깊이 버퍼를 채운 뒤 로프만 다시 그려 만들기 때문에 선체·물에 가려진 부분이 자동으로 제외된다. 폴리곤은 튜브 실루엣의 근사(검증 캡처 IoU 평균 0.85)이며, 픽셀 정밀도가 필요하면 마스크를 사용한다.
 - 3D SagRatio(물리 정답)와 영상 SagRatio(카메라가 보는 값)를 모두 기록한다.
 
@@ -116,6 +120,7 @@ npm run preview
 - [합성 데이터 설계](docs/2026-09-07-synthetic-dataset-plan.md)
 - [합성 데이터 검증과 트러블슈팅](docs/2026-09-07-synthetic-dataset-validation.md)
 - [예인선 위치 확장 설계와 검증](docs/2026-09-09-tow-positions.md)
+- [전방향 데이터셋·물 튐 렌즈 검증](docs/2026-09-09-dataset-positions-lens.md)
 
 .env 및 API 키 등 민감정보는 저장소에 추가하거나 푸시하지 않습니다.
 

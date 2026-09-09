@@ -6,6 +6,7 @@ import { projectBoxToYolo } from '../dataset/projection';
 import { boxToPolygon, estimateSag2D, projectRopeSegmentation } from '../dataset/segmentation';
 import type { CaptureSample, CapturedFrame, FrameLabel, SceneCaptureApi } from '../dataset/types';
 import type { SagMetrics } from '../simulation/towline';
+import { encodeDatasetJpeg } from '../dataset/lensRenderer';
 
 interface Props {
   sample:CaptureSample|null;
@@ -86,18 +87,6 @@ function renderRopeMask(gl:WebGLRenderer,scene:Scene,camera:PerspectiveCamera,ro
   }
 }
 
-/** Optional blur/exposure augmentation on the exported frame only. */
-function encodeJpeg(source:HTMLCanvasElement,blurPx:number|undefined):string {
-  if(!blurPx||blurPx<=0) return source.toDataURL('image/jpeg',.9);
-  const canvas=document.createElement('canvas');
-  canvas.width=source.width;canvas.height=source.height;
-  const ctx=canvas.getContext('2d');
-  if(!ctx||!('filter' in ctx)) return source.toDataURL('image/jpeg',.9);
-  ctx.filter=`blur(${blurPx.toFixed(2)}px)`;
-  ctx.drawImage(source,0,0);
-  return canvas.toDataURL('image/jpeg',.9);
-}
-
 export function DatasetCaptureBridge({sample,tug,ship,rope,onReady}:Props) {
   const {gl,scene,camera}=useThree();
   const pending=useRef<Pending|null>(null);
@@ -140,7 +129,7 @@ export function DatasetCaptureBridge({sample,tug,ship,rope,onReady}:Props) {
       gl.setPixelRatio(1);gl.setSize(sample.width,sample.height,false);
       scene.updateMatrixWorld(true);
       gl.render(scene,captureCamera);
-      const jpeg=encodeJpeg(gl.domElement,sample.params.imageBlurPx);
+      const jpeg=encodeDatasetJpeg(gl.domElement,sample.params);
       const labels:FrameLabel[]=[];
       const ocean=scene.getObjectByName('ocean-surface');
       const occluders=[ship.current,tug.current,...(rope.current?[rope.current]:[]),...(ocean?[ocean]:[])];
