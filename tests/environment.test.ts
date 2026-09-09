@@ -6,7 +6,7 @@ import { Vector3 } from 'three';
 
 test('same seed recreates the randomized environment sequence within operating limits', () => {
   const a=seededRandom(1234), b=seededRandom(1234);
-  const modes=new Set(), times=new Set();
+  const modes=new Set(), times=new Set(), positions=new Set();
   for(let i=0;i<100;i++) {
     const sample=randomizeEnvironment(a,i);
     assert.deepEqual(sample,randomizeEnvironment(b,i));
@@ -14,9 +14,9 @@ test('same seed recreates the randomized environment sequence within operating l
     assert.ok(sample.towLineLength>=18 && sample.towLineLength<=55);
     assert.ok(Math.abs(sample.tugSteeringAngle)<=85);
     assert.equal(sample.quickReleaseActive,false);
-    modes.add(sample.cameraMode); times.add(sample.timeOfDay);
+    modes.add(sample.cameraMode); times.add(sample.timeOfDay);positions.add(sample.towPosition);
   }
-  assert.equal(modes.size,3); assert.equal(times.size,3);
+  assert.equal(modes.size,3); assert.equal(times.size,3);assert.equal(positions.size,4);
 });
 test('taut threshold is shared by geometry and labels, with zero-length guards', () => {
   assert.equal(getTowlineState(319,'SAFE'),'slack');

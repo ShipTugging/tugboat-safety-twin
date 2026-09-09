@@ -32,7 +32,7 @@ export function randomizeSagScene(random:()=>number=Math.random,index=Math.floor
     towLineLength:Math.round(between(16,maxLength)),
     shipSpeed:Math.round(between(hard?6:1,maxSpeed)*10)/10,
     propellerRpm:pick([0,45,80,115]),
-    cameraMode:'TUG_SAG_CAM',timeOfDay,quickReleaseActive:false,soundEnabled:false,
+    cameraMode:'TUG_SAG_CAM',timeOfDay,towPosition:'astern',quickReleaseActive:false,soundEnabled:false,
     fogDensity:between(.0002,.012),sunIntensity:between(.7,1.35),waveStrength:between(.4,1.7),
     cameraFov:between(52,70),
     cameraJitter:[between(-.35,.35),between(-.25,.25),between(-.35,.35)],

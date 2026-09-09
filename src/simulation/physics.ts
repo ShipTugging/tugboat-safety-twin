@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { SimulationParams, TelemetryState, RiskLevel } from '../types/maritime';
+import { distanceFromShipHull, getTowGeometry, getTugStaplePosition } from './towPosition';
 
 /** Integration memory belongs to one simulation, never to a global singleton. */
 export interface PhysicsState {
@@ -53,24 +54,14 @@ export function stepMaritimePhysics(
   // Ship motion reference frame (ship at origin or slowly bobbing)
   const shipPos: [number, number, number] = [0, Math.sin(now * 0.001) * 0.15, 0];
 
-  // Towing chock on ship's starboard quarter
-  const shipChock: [number, number, number] = [3.5, 2.6 + shipPos[1], -34];
-
-  // Calculate tugboat position based on towline length & steering angle
+  // Calculate the matching chock, tug position and heading for all four
+  // operating sectors. Existing projects without the field stay astern.
   const steerRad = (params.tugSteeringAngle * Math.PI) / 180;
-
-  // Base towing trajectory:
-  // Tug floats behind the ship at distance approx towLineLength, swung by steering angle
   const baseDistance = Math.max(12, params.towLineLength);
-
-  // Lateral offset driven by steering angle and towing dynamics
-  const lateralSwing = Math.sin(steerRad) * (baseDistance * 0.85);
-  const longitudinalOffset = -Math.cos(steerRad * 0.7) * baseDistance - 34;
-
-  // Tugboat target position in 3D space
-  const targetX = 3.5 + lateralSwing;
   const targetY = 0.5 + Math.sin(now * 0.002) * 0.18;
-  const targetZ = longitudinalOffset;
+  const geometry=getTowGeometry(params.towPosition??'astern',params.tugSteeringAngle,baseDistance,shipPos,targetY);
+  const shipChock=geometry.shipChock;
+  const [targetX,,targetZ]=geometry.tugPosition;
 
   // Propeller Wash Evaluation
   // Propeller wake zone: extends behind ship from Z=-35 to Z=-90, centered at X=0, radius expanding
@@ -108,18 +99,8 @@ export function stepMaritimePhysics(
     targetZ + jitter[2],
   ];
 
-  // Tugboat towing staple (on the bow / forward deck of ASD tug)
-  const tugHeadingYaw = steerRad * 0.85;
-  const stapleOffsetLocal: [number, number, number] = [
-    Math.sin(tugHeadingYaw) * 3.5,
-    1.2,
-    Math.cos(tugHeadingYaw) * 3.5
-  ];
-  const tugStaple: [number, number, number] = [
-    tugPos[0] + stapleOffsetLocal[0],
-    tugPos[1] + stapleOffsetLocal[1],
-    tugPos[2] + stapleOffsetLocal[2]
-  ];
+  // Tugboat heading relative to the selected ship chock.
+  const tugHeadingYaw = geometry.tugYaw;
 
   // Preserve the steering-based angle used by the live simulator.
   const lineAngleDeg = Math.min(90, Math.abs(params.tugSteeringAngle));
@@ -175,20 +156,15 @@ export function stepMaritimePhysics(
   state.prevRoll = imuRoll;
 
   const imuPitch = (Math.sin(now * 0.0025) * 1.8) + (params.shipSpeed * 0.15) + (jitter[1] * 3);
+  const tugRotation:[number,number,number]=[
+    (imuPitch*Math.PI)/180,tugHeadingYaw,(imuRoll*Math.PI)/180,
+  ];
+  const tugStaple=getTugStaplePosition(tugPos,tugRotation).toArray() as [number,number,number];
 
   // Suction & Hull Distance Calculation
   // Large ship starboard hull is at X = 7.0 (ship width 14m, half-width 7m)
   // Stern is at Z = -35. If tug is along the quarter/flank:
-  let hullDistanceM = 0;
-  if (tugPos[2] >= -37) {
-    // Alongside the hull
-    hullDistanceM = Math.max(0.5, Math.abs(tugPos[0] - 7.0));
-  } else {
-    // Aft of the stern
-    const dz = -35 - tugPos[2];
-    const dx = Math.max(0, Math.abs(tugPos[0]) - 7.0);
-    hullDistanceM = Math.max(0.8, Math.sqrt(dx * dx + dz * dz));
-  }
+  const hullDistanceM=distanceFromShipHull(tugPos[0]-shipPos[0],tugPos[2]-shipPos[2]);
 
   // Closing rate (m/s)
   const prevDist = state.previousDistance;
@@ -216,11 +192,7 @@ export function stepMaritimePhysics(
   return {
     timestamp: now,
     tugPosition: tugPos,
-    tugRotation: [
-      (imuPitch * Math.PI) / 180,
-      tugHeadingYaw,
-      (imuRoll * Math.PI) / 180
-    ],
+    tugRotation,
     shipPosition: shipPos,
     lineStartPoint: shipChock,
     lineEndPoint: tugStaple,

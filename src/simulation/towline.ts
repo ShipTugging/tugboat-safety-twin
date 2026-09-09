@@ -1,4 +1,4 @@
-import { CatmullRomCurve3, Euler, Vector3 } from 'three';
+import { CatmullRomCurve3, Vector3 } from 'three';
 import type { RiskLevel, TelemetryState } from '../types/maritime';
 
 export const getTowlineState = (tensionKn:number,risk:RiskLevel):'taut'|'slack' =>
@@ -91,7 +91,7 @@ export function createTowlineCurve(start:Vector3,end:Vector3,length:number,tensi
 /** Render anchors follow the actual chock/staple and the tug's roll/pitch. */
 export function getTowlineAnchors(t:TelemetryState):{start:Vector3;end:Vector3} {
   return {
-    start:new Vector3(3.5,2.7,-34.2).add(new Vector3(...t.shipPosition)),
-    end:new Vector3(0,2.8,3.2).applyEuler(new Euler(...t.tugRotation)).add(new Vector3(...t.tugPosition)),
+    start:new Vector3(...t.lineStartPoint).add(new Vector3(0,.1,0)),
+    end:new Vector3(...t.lineEndPoint),
   };
 }

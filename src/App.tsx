@@ -20,6 +20,7 @@ const DEFAULT_PARAMS: SimulationParams = {
   quickReleaseActive: false,
   soundEnabled: false,
   fogDensity: 0.0014,
+  towPosition: 'astern',
 };
 
 export function App() {

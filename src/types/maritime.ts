@@ -3,6 +3,7 @@ export type CameraMode = 'orbit' | 'tugChase' | 'bridgeView' | 'topDown' | 'cine
 export type TimeOfDay = 'day' | 'sunset' | 'night';
 
 export type RiskLevel = 'SAFE' | 'WARNING' | 'CRITICAL';
+export type TowPosition = 'astern' | 'port' | 'starboard' | 'ahead';
 
 export interface SimulationParams {
   tugSteeringAngle: number; // -90° to +90°
@@ -27,6 +28,8 @@ export interface SimulationParams {
   cameraRotationJitter?: [number, number, number];
   /** Gaussian blur applied to the exported JPEG only (px at 960x540). */
   imageBlurPx?: number;
+  /** Where the tug operates around the main vessel. Defaults to astern. */
+  towPosition?: TowPosition;
 }
 
 export interface TelemetryState {
@@ -82,5 +85,6 @@ export interface ScenarioPreset {
     towLineLength: number;
     shipSpeed: number;
     propellerRpm: number;
+    towPosition?: TowPosition;
   };
 }

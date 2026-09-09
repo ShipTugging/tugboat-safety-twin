@@ -12,6 +12,7 @@ import { DatasetCaptureBridge } from './DatasetCaptureBridge';
 import { MarineFloodlights } from './MarineFloodlights';
 import { applyDatasetCamera, isOnboardCamera } from '../dataset/camera';
 import { SAG_LEVEL_NAMES, computeSagMetrics, getTowlineAnchors } from '../simulation/towline';
+import { TOW_POSITION_LABELS } from '../simulation/towPosition';
 import type { CaptureSample, SceneCaptureApi } from '../dataset/types';
 import { Camera, Layers, Sun, Sunset, Moon, Compass, AlertTriangle, SlidersHorizontal, Spline } from 'lucide-react';
 
@@ -30,6 +31,7 @@ function CameraController({ params, telemetry, onUpdatePhysics, captureBusy, cap
   const { camera, size } = useThree();
   const lastMode = useRef<CameraMode | null>(null);
   const previousWidth = useRef(0);
+  const lastTowPosition=useRef<SimulationParams['towPosition']>();
   const target = useRef(new THREE.Vector3());
   useFrame((state, delta) => {
     // Export renders with its own camera. Leave the operator's live camera,
@@ -52,19 +54,23 @@ function CameraController({ params, telemetry, onUpdatePhysics, captureBusy, cap
     const yaw = telemetry.tugRotation[1];
     const blend = 1-Math.exp(-delta*3);
     if (mode === 'orbit') {
-      if (lastMode.current !== mode || Math.abs(previousWidth.current-size.width)>80) {
+      if (lastMode.current !== mode || Math.abs(previousWidth.current-size.width)>80 || lastTowPosition.current!==params.towPosition) {
         const scale = size.width / size.height < 1 ? 1.45 : 1;
-        camera.position.set(76*scale, 48*scale, -100*scale);
+        const center=new THREE.Vector3((telemetry.shipPosition[0]+x)/2,3,(telemetry.shipPosition[2]+z)/2);
+        const offsets={astern:[76,48,-75],port:[-75,48,-76],starboard:[75,48,76],ahead:[-76,48,75]} as const;
+        const offset=offsets[params.towPosition??'astern'];
+        camera.position.set(center.x+offset[0]*scale,center.y+offset[1]*scale,center.z+offset[2]*scale);
+        camera.lookAt(center);
         previousWidth.current=size.width;
       }
     } else if (mode === 'tugChase') {
       target.current.set(x-Math.sin(yaw)*26, y+13, z-Math.cos(yaw)*26);
       camera.position.lerp(target.current, blend);
-      camera.lookAt(x, y+2, z+9);
+      camera.lookAt(x+Math.sin(yaw)*9,y+2,z+Math.cos(yaw)*9);
     } else if (mode === 'bridgeView') {
       target.current.set(x, y+7.5, z+1);
       camera.position.lerp(target.current, blend);
-      camera.lookAt(3.5, 4, -30);
+      camera.lookAt(...telemetry.lineStartPoint);
     } else if (mode === 'topDown') {
       target.current.set(4, 180, -15);
       camera.position.lerp(target.current, blend);
@@ -76,6 +82,7 @@ function CameraController({ params, telemetry, onUpdatePhysics, captureBusy, cap
       camera.lookAt(5,2,-18);
     }
     lastMode.current = mode;
+    lastTowPosition.current=params.towPosition;
   });
   return null;
 }
@@ -91,7 +98,7 @@ export function Scene3D({ params, telemetry, onUpdatePhysics, onSelectCamera, on
   return <div className="scene-viewport">
     <Canvas shadows={quality === 'high'} dpr={quality === 'high' ? [1, 1.5] : 1} gl={{antialias:true,alpha:false,preserveDrawingBuffer:true,powerPreference:'high-performance',toneMapping:THREE.ACESFilmicToneMapping,toneMappingExposure:1.1}}>
       <PerspectiveCamera makeDefault position={[76,48,-100]} fov={43} near={.3} far={1800}/>
-      {liveCameraMode === 'orbit' && <OrbitControls enabled={!captureBusy} makeDefault enableDamping dampingFactor={.06} minDistance={25} maxDistance={260} maxPolarAngle={Math.PI/2-.08} target={[4,2,-17]}/>}
+      {liveCameraMode === 'orbit' && <OrbitControls enabled={!captureBusy} makeDefault enableDamping dampingFactor={.06} minDistance={25} maxDistance={260} maxPolarAngle={Math.PI/2-.08} target={[(telemetry.shipPosition[0]+telemetry.tugPosition[0])/2,3,(telemetry.shipPosition[2]+telemetry.tugPosition[2])/2]}/>}
       <CameraController params={params} telemetry={telemetry} onUpdatePhysics={onUpdatePhysics} captureBusy={captureBusy} captureSample={captureSample}/>
       <HarborEnvironment showTacticalGrid={analysis&&!datasetMode} timeOfDay={params.timeOfDay} telemetry={telemetry} shipSpeed={params.shipSpeed} propellerRpm={params.propellerRpm} highQuality={quality === 'high'} fogDensity={params.fogDensity} sunIntensity={params.sunIntensity} waveStrength={params.waveStrength} simulationTime={captureSample?.time}/>
       <group ref={shipRef}><LargeShip position={telemetry.shipPosition} shipSpeedKnots={params.shipSpeed} timeOfDay={params.timeOfDay} hullColor={params.hullColor}/></group>
@@ -109,7 +116,7 @@ export function Scene3D({ params, telemetry, onUpdatePhysics, onSelectCamera, on
       {hasAlert && <div className={girting || suction ? 'scene-alert critical' : 'scene-alert'} role="status"><AlertTriangle size={16}/><span>{[girting && '거팅 위험 · 예인줄 분리 필요', suction && `흡인 위험 · 이격 ${telemetry.hullDistanceM.toFixed(1)}m`, telemetry.inWashZone && `후류 진입 · 난류 ${telemetry.washTurbulencePct}%`].filter(Boolean).join(' / ')}</span></div>}
       {analysis && <div className="analysis-legend"><span>분석 레이어</span><span>주황 5m · 청록 9m 이격선</span><span>점선: 후류 범위</span></div>}
       {!params.quickReleaseActive && <div className={'sag-chip level-'+sag.level} role="status" aria-label="예인줄 처짐"><Spline size={14}/><span>예인줄 Sag L{sag.level} · {SAG_LEVEL_NAMES[sag.level]}</span><b>{sag.sagRatio.toFixed(3)}</b><small>{sag.sagM.toFixed(2)} m / {sag.spanM.toFixed(1)} m</small></div>}
-      <div className="scene-caption"><span><i/>ASD TUG · 예인선 추적 중</span><span>선박 · 해양 운동 시뮬레이션</span></div>
+      <div className="scene-caption"><span><i/>ASD TUG · {TOW_POSITION_LABELS[params.towPosition??'astern']} 호위</span><span>선박 · 해양 운동 시뮬레이션</span></div>
       <fieldset disabled={captureBusy} className="view-toolbar">
         <div className="camera-select"><Camera size={15}/><select aria-label="카메라 시점" value={params.cameraMode} onChange={e=>onSelectCamera(e.target.value as CameraMode)}><option value="orbit">자유 시점</option><option value="tugChase">예인선 추적</option><option value="bridgeView">선교 시점</option><option value="topDown">상공 시점</option><option value="cinematic">시네마틱</option><option value="TUG_AFT_DECK">CCTV · 선미 덱</option><option value="TUG_BRIDGE">CCTV · 조타실 80°</option><option value="TUG_SAG_CAM">CCTV · 예인줄 감시(Sag)</option></select></div>
         <button className="layer-button" aria-pressed={analysis} onClick={()=>setAnalysis(!analysis)}><Layers size={15}/><span>위험 분석</span></button>

@@ -19,18 +19,18 @@ export function applyDatasetCamera(camera:PerspectiveCamera,params:SimulationPar
   const jitter=new Vector3(...(params.cameraJitter??[0,0,0]));
   const rotation=new Quaternion().setFromEuler(new Euler(...t.tugRotation));
   const onTug=(p:Vector3)=>p.add(jitter).applyQuaternion(rotation).add(new Vector3(...t.tugPosition));
-  const stern=new Vector3(3.5,3.8,-34.2).add(new Vector3(...t.shipPosition));
+  const towTarget=new Vector3(...t.lineStartPoint).add(new Vector3(0,1.2,0));
   camera.up.set(0,1,0);
   if(params.cameraMode==='TUG_AFT_DECK') {
     camera.position.copy(onTug(new Vector3(-2.3,2.55,-4.3)));
     camera.up.applyQuaternion(rotation);
     camera.fov=params.cameraFov??68;
-    camera.lookAt(stern);
+    camera.lookAt(towTarget);
   } else if(params.cameraMode==='TUG_BRIDGE') {
     camera.position.copy(onTug(new Vector3(0,3.9,-.4)));
     camera.up.applyQuaternion(rotation);
     camera.fov=80;
-    const lineTarget=stern.clone().lerp(new Vector3(...t.tugPosition),.25);
+    const lineTarget=towTarget.clone().lerp(new Vector3(...t.tugPosition),.25);
     lineTarget.y=2;
     camera.lookAt(lineTarget);
   } else if(params.cameraMode==='TUG_SAG_CAM') {

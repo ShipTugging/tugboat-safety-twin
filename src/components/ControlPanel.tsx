@@ -1,5 +1,6 @@
 import React from 'react';
-import { SimulationParams, ScenarioPreset } from '../types/maritime';
+import { SimulationParams, ScenarioPreset, TowPosition } from '../types/maritime';
+import { TOW_POSITION_LABELS } from '../simulation/towPosition';
 import { maritimeAudio } from '../utils/audioSynthesizer';
 import {
   Sliders,
@@ -35,6 +36,7 @@ export const KOREAN_PRESETS: ScenarioPreset[] = [
       towLineLength: 32,
       shipSpeed: 6,
       propellerRpm: 45,
+      towPosition: 'astern',
     },
   },
   {
@@ -47,6 +49,7 @@ export const KOREAN_PRESETS: ScenarioPreset[] = [
       towLineLength: 26,
       shipSpeed: 8.5,
       propellerRpm: 60,
+      towPosition: 'astern',
     },
   },
   {
@@ -59,6 +62,7 @@ export const KOREAN_PRESETS: ScenarioPreset[] = [
       towLineLength: 28,
       shipSpeed: 9,
       propellerRpm: 115,
+      towPosition: 'astern',
     },
   },
   {
@@ -71,6 +75,7 @@ export const KOREAN_PRESETS: ScenarioPreset[] = [
       towLineLength: 14,
       shipSpeed: 10,
       propellerRpm: 50,
+      towPosition: 'astern',
     },
   },
 ];
@@ -162,6 +167,24 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               </p>
             </button>
           ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2 bg-slate-950/70 p-2.5 rounded-lg border border-slate-800">
+        <div className="flex items-center justify-between text-xs font-mono">
+          <span className="flex items-center gap-1.5 text-slate-200 font-medium">
+            <Compass size={14} className="text-cyan-400" /> 예인 위치
+          </span>
+          <span className="text-cyan-300">{TOW_POSITION_LABELS[params.towPosition??'astern']}</span>
+        </div>
+        <div className="grid grid-cols-2 gap-1.5" role="group" aria-label="예인선 위치">
+          {(['astern','port','starboard','ahead'] as TowPosition[]).map(position=><button
+            key={position}
+            type="button"
+            aria-pressed={(params.towPosition??'astern')===position}
+            onClick={()=>onChangeParams({towPosition:position,quickReleaseActive:false})}
+            className={`py-2 rounded border text-[10px] font-mono ${(params.towPosition??'astern')===position?'bg-cyan-500/20 text-cyan-200 border-cyan-400/60':'bg-slate-800/70 text-slate-400 border-slate-700 hover:text-slate-200'}`}
+          >{TOW_POSITION_LABELS[position]}</button>)}
         </div>
       </div>
 

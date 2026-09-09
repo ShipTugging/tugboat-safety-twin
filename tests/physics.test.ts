@@ -30,7 +30,7 @@ test('preserves attachment positions and timestamp', () => {
   const result = stepMaritimePhysics(baseline, createPhysicsState(), 1 / 60, 0);
   assert.deepEqual(result.tugPosition, [11.90526224699857, 0.5, -65.22933638203992]);
   assert.deepEqual(result.lineStartPoint, [3.5, 2.6, -34]);
-  assert.deepEqual(result.lineEndPoint, [12.828817921877375, 1.7, -61.85338541743762]);
+  assert.deepEqual(result.lineEndPoint, [12.740924826324909, 3.2511204723871114, -62.096764882468655]);
   assert.equal(result.timestamp, 0);
 });
 

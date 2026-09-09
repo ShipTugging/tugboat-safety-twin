@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { TelemetryState } from '../types/maritime';
 import { Radio } from 'lucide-react';
+import { worldToRadarPoint } from '../simulation/radar';
 
 interface TacticalRadarProps {
   telemetry: TelemetryState;
@@ -97,10 +98,8 @@ export const TacticalRadar: React.FC<TacticalRadarProps> = ({ telemetry, inWashZ
       ctx.restore();
 
       // 4. Towing Line Vector
-      const shipChockX = cx + 3.5 * scale;
-      const shipChockY = cy + 34 * scale;
-      const tugX = cx + telemetry.tugPosition[0] * scale;
-      const tugY = cy - telemetry.tugPosition[2] * scale; // invert Z
+      const [shipChockX,shipChockY]=worldToRadarPoint(telemetry.lineStartPoint,cx,cy,scale);
+      const [tugX,tugY]=worldToRadarPoint(telemetry.tugPosition,cx,cy,scale);
 
       ctx.save();
       ctx.beginPath();
