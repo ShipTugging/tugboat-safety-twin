@@ -30,3 +30,7 @@
 - Sag 네 방향 혼합 20장 ZIP 실제 생성 검사: JPEG 20 / IMU JSON 20 / 촬영 시점 CSV 20행 / 구간 CSV 420행이 일치했다. 첫 프레임 RGB·IMU 타임스탬프 모두 `71937.37825378776`ms. 이미지·마스크 검사도 통과했다.
 - 신규/기존 테스트 총 58개 통과, 프로덕션 빌드 성공. 독립 리뷰에서 계산·동기화·취소 처리의 차단 문제 없음.
 - 객체 탐지 네 방향 혼합 8장 ZIP도 실제 생성했다. IMU JSON 8개, 촬영 시점 CSV 8행, 구간 CSV 168행의 시간과 6축 수치 일치 검사 통과. 브라우저 JavaScript/WebGL 오류 없음.
+
+## 배포 확인
+
+기능 커밋 `d3910e0`을 GitHub main에 push했다. Vercel production `dpl_ofb4pH5xyW9zZQ3ZKKQGgc4DsLRn` READY. 공개 사이트에서 선수 + 물 튐 Sag 3장과 IMU JSON 3개/구간 샘플 63개를 실제 다운로드해 동기화 검사를 통과했다. 공개 브라우저 오류 없음.
