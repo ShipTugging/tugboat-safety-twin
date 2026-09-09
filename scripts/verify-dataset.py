@@ -6,6 +6,7 @@ python scripts/verify-dataset.py path/to/towline_sag_seg_dataset.zip --preview p
 Optional Pillow enables image checks, the preview sheet and polygon-vs-mask IoU.
 """
 import argparse
+import csv
 import io
 import json
 import math
@@ -62,6 +63,14 @@ with zipfile.ZipFile(args.archive) as archive:
     classes = SAG_CLASSES if kind == 'sag' else DETECTION_CLASSES
     assert archive.read('classes.txt').decode().splitlines() == classes
     assert list(metadata['classes']) == classes
+    imu_rows = []
+    imu_window_rows = []
+    if metadata.get('version', 0) >= 4:
+        assert 'imu.csv' in names and 'imu_windows.csv' in names and 'imu_schema.json' in names
+        imu_rows = list(csv.DictReader(io.StringIO(archive.read('imu.csv').decode())))
+        imu_window_rows = list(csv.DictReader(io.StringIO(archive.read('imu_windows.csv').decode())))
+        assert len(imu_rows) == expected and len(imu_window_rows) == expected * 21
+        assert len([n for n in names if n.startswith('imu/') and n.endswith('.json')]) == expected
     if kind == 'sag':
         assert 'data.yaml' in names and 'sag_labels.csv' in names
         csv_rows = archive.read('sag_labels.csv').decode().splitlines()
@@ -77,6 +86,38 @@ with zipfile.ZipFile(args.archive) as archive:
     for index, frame in enumerate(frames):
         assert frame['image'] == f'images/frame_{index+1:04d}.jpg'
         assert frame['label'] == f'labels/frame_{index+1:04d}.txt'
+        if metadata.get('version', 0) >= 4:
+            frame_id = f'frame_{index+1:04d}'
+            record = json.loads(archive.read(frame['imuFile']))
+            assert frame['imuFile'] == f'imu/{frame_id}.json'
+            assert record['frameId'] == record['sequenceId'] == frame['frameId'] == frame_id
+            assert record['image'] == frame['image'] and record['label'] == frame['label']
+            timestamp = frame['telemetry']['timestamp']
+            assert record['timestampMs'] == frame['timestampMs'] == timestamp
+            assert abs(frame['simulationTime'] * 1000 - timestamp) < 1e-6
+            assert record['sample'] == record['samples'][-1] == frame['imu']
+            assert record['sampleRateHz'] == 100 and len(record['samples']) == 21
+            paired = imu_rows[index]
+            assert paired['frame_id'] == frame_id and paired['image'] == frame['image']
+            assert abs(float(paired['timestamp_ms']) - timestamp) < 1e-6
+            assert float(paired['offset_ms']) == 0
+            channel_fields = [('accelerometerMps2', ['ax_mps2', 'ay_mps2', 'az_mps2']), ('gyroscopeRadS', ['gx_rad_s', 'gy_rad_s', 'gz_rad_s'])]
+            for key, columns in channel_fields:
+                for value, column in zip(record['sample'][key], columns):
+                    assert abs(float(paired[column]) - value) < 1e-7
+            for i, sample in enumerate(record['samples']):
+                offset = -200 + i * 10
+                assert sample['offsetMs'] == offset
+                assert abs(sample['timestampMs'] - timestamp - offset) < 1e-6
+                assert all(math.isfinite(v) for key in ['accelerometerMps2', 'gyroscopeRadS', 'linearAccelerationWorldMps2', 'orientationQuaternion'] for v in sample[key])
+                row = imu_window_rows[index * 21 + i]
+                assert row['frame_id'] == frame_id and float(row['offset_ms']) == offset
+                assert abs(float(row['timestamp_ms']) - sample['timestampMs']) < 1e-6
+                for key, columns in channel_fields:
+                    for value, column in zip(sample[key], columns):
+                        assert abs(float(row[column]) - value) < 1e-7
+            for actual, radians in zip(record['sample']['orientationEulerDeg'], frame['telemetry']['tugRotation']):
+                assert abs(actual - radians * 180 / math.pi) < 1e-7
         lines = [line for line in archive.read(frame['label']).decode().splitlines() if line.strip()]
         assert len(lines) == len(frame['annotations'])
         parsed = []
@@ -179,4 +220,7 @@ with zipfile.ZipFile(args.archive) as archive:
             var = math.sqrt(sum((a-mx)**2 for a in xs) * sum((b-my)**2 for b in ys))
             report['ratio_3d_vs_2d_corr'] = round(cov / var, 3) if var else None
     report['result'] = 'PASS'
+    if metadata.get('version', 0) >= 4:
+        report['synced_imu_frames'] = len(imu_rows)
+        report['imu_window_samples'] = len(imu_window_rows)
     print(json.dumps(report, ensure_ascii=False))

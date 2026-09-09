@@ -54,7 +54,8 @@ export function DatasetControls({dataset,onRandomize}:{dataset:DatasetController
         {d.preview.mask && <div className="dataset-image dataset-mask"><img src={d.preview.mask} alt="예인줄 마스크"/></div>}
         {sagPreview && <small>Sag L{sagPreview.truth.level} {SAG_LEVEL_NAMES[sagPreview.truth.level]} · 3D {sagPreview.truth.sagRatio.toFixed(4)} ({sagPreview.truth.sagM.toFixed(2)} m / {sagPreview.truth.spanM.toFixed(1)} m) · 영상 {sagPreview.image?sagPreview.image.ratio.toFixed(4):'-'} · 가시 {(sagPreview.visibleFraction*100).toFixed(0)}%</small>}
         <small>{d.previewMode} · {classes.join(' / ')}</small></details>}
-      <p className="dataset-note">960 × 540 · JPEG{d.kind==='sag'?' + PNG 마스크 + YOLO-Seg + data.yaml + sag_labels.csv':' + YOLO'} · 최대 500장</p>
+      <p className="dataset-note">비전 + IMU 동기 저장 · 3축 가속도·각속도·자세<br/>프레임별 IMU JSON + CSV · 100Hz / 직전 0.2초</p>
+      <p className="dataset-note">960 × 540 · JPEG{d.kind==='sag'?' + PNG 마스크 + YOLO-Seg':' + YOLO'} · 최대 500장</p>
     </div>}
   </section>;
 }

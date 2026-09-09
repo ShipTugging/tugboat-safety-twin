@@ -35,6 +35,10 @@ towline_sag_seg_dataset.zip
 ├─ images/frame_0001.jpg      JPEG(선택한 렌즈 상태 증강)
 ├─ labels/frame_0001.txt      YOLO-Seg 폴리곤: class x1 y1 x2 y2 ...
 ├─ masks/frame_0001.png       로프 픽셀 마스크(가림 반영, 흰색 = 로프)
+├─ imu/frame_0001.json        같은 시점 IMU + 직전 0.2초 구간
+├─ imu.csv                   이미지당 IMU 1행
+├─ imu_windows.csv           이미지당 100Hz IMU 21행
+├─ imu_schema.json           축·단위·중력·타임스탬프 정의
 ├─ classes.txt / data.yaml    Ultralytics 학습 설정
 ├─ sag_labels.csv             프레임별 단계·SagRatio(3D/영상)·장력·환경
 └─ metadata.json
@@ -75,6 +79,18 @@ yolo segment train data=data.yaml model=yolo11n-seg.pt imgsz=960          # Ultr
 라벨 형식은 `class_id x_center y_center width height`입니다. Box3 투영 후 near/far 평면과 화면 경계를 잘라 0~1로 정규화합니다. 화면 밖·완전 가림 표본은 제외하며 부분 가림은 전체 3D 경계상자의 투영 영역을 사용합니다. 객체가 보이지 않는 이미지는 빈 라벨의 음성 표본으로 저장됩니다.
 
 시드는 조명·안개·파도·조향·줄 길이·RPM·카메라·물리 상태를 재현합니다. GPU와 실시간 회전 부품 때문에 픽셀까지 동일함을 보장하지 않습니다. 학습/검증용 데이터는 서로 다른 시드와 수집 실행으로 분리하고 실제 영상으로 별도 검증해야 합니다. AI 모델 학습과 실제 센서 연결은 이 내보내기 기능에 포함되지 않습니다.
+
+## 비전 + IMU 동기 데이터
+
+Sag와 객체 탐지 모드 모두 IMU를 자동으로 함께 저장합니다. `frame_0001.jpg` ↔ `imu/frame_0001.json` ↔ `imu.csv`의 `frame_id=frame_0001`로 결합하세요. 이미지의 물리 시뮬레이션 타임스탬프와 IMU의 마지막 샘플 타임스탬프가 동일합니다.
+
+- 3축 가속도: 모델 본체 좌표의 specific force, 단위 m/s², 중력 반영. 직립 정지 상태는 `[0,9.80665,0]`.
+- 3축 각속도: 모델 본체 좌표, 단위 rad/s.
+- 자세: quaternion `[x,y,z,w]` 및 Euler XYZ `[pitch,yaw,roll]` 도 단위.
+- 촬영 직전 200ms부터 촬영 시점까지 100Hz(21개) 구간을 프레임별 JSON과 `imu_windows.csv`에 저장.
+- 물 튐·흐림은 RGB에만 적용되어 같은 순간의 IMU와 함께 융합 학습에 사용할 수 있습니다.
+
+IMU는 실제 장비 측정이 아닌 노이즈 없는 모델 기반 합성값입니다. 축은 Three.js 예인선 모델 좌표(+Y 위, +Z 선수)이며 하드웨어 좌표계와 자동 호환된다고 가정하면 안 됩니다. 각 이미지는 별도로 무작위화된 장면이므로 서로 다른 `frame_id`의 IMU 구간을 연속 항해 시계열처럼 이어 붙이지 마세요. 상세 내용은 [동기 IMU 설계와 검증](docs/2026-09-09-vision-imu.md)을 참고하세요.
 
 ## 실행
 
@@ -121,6 +137,7 @@ npm run preview
 - [합성 데이터 검증과 트러블슈팅](docs/2026-09-07-synthetic-dataset-validation.md)
 - [예인선 위치 확장 설계와 검증](docs/2026-09-09-tow-positions.md)
 - [전방향 데이터셋·물 튐 렌즈 검증](docs/2026-09-09-dataset-positions-lens.md)
+- [비전·IMU 동기 데이터 설계](docs/2026-09-09-vision-imu.md)
 
 .env 및 API 키 등 민감정보는 저장소에 추가하거나 푸시하지 않습니다.
 
