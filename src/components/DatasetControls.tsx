@@ -9,22 +9,23 @@ import type { LensSelection } from '../dataset/lens';
 
 const SAG_PREVIEW_COLORS=['#7ee0a8','#c9e07e','#f1d28e','#f0a25e','#f57b73','#7fc7ff'];
 
-export function DatasetControls({dataset,onRandomize}:{dataset:DatasetController;onRandomize:()=>void}) {
+export function DatasetControls({dataset,onRandomize,externalBusy=false}:{dataset:DatasetController;onRandomize:()=>void;externalBusy?:boolean}) {
   const d=dataset;
+  const locked=d.busy||externalBusy;
   const classes=classNamesFor(d.archiveKind);
   const sagPreview=d.preview?.sag;
   return <section className="dataset-controls" aria-label="AI 데이터 생성">
-    <label className="dataset-toggle"><span><Camera size={15}/>AI 데이터 생성 모드</span><input type="checkbox" role="switch" checked={d.enabled} disabled={d.busy} onChange={e=>d.setEnabled(e.target.checked)}/></label>
+    <label className="dataset-toggle"><span><Camera size={15}/>AI 데이터 생성 모드</span><input type="checkbox" role="switch" checked={d.enabled} disabled={locked} onChange={e=>d.setEnabled(e.target.checked)}/></label>
     {d.enabled && <div className="dataset-body">
-      <fieldset className="dataset-kind" disabled={d.busy} aria-label="데이터셋 종류">
+      <fieldset className="dataset-kind" disabled={locked} aria-label="데이터셋 종류">
         <button type="button" aria-pressed={d.kind==='sag'} onClick={()=>d.setKind('sag')}><Spline size={13}/>예인줄 Sag 분할</button>
         <button type="button" aria-pressed={d.kind==='detection'} onClick={()=>d.setKind('detection')}><Camera size={13}/>객체 탐지 박스</button>
       </fieldset>
       <div className="dataset-capture-options">
-        <label>캡처 위치<select aria-label="데이터셋 캡처 위치" value={d.capturePosition} disabled={d.busy} onChange={e=>d.setCapturePosition(e.target.value as CapturePosition)}>
+        <label>캡처 위치<select aria-label="데이터셋 캡처 위치" value={d.capturePosition} disabled={locked} onChange={e=>d.setCapturePosition(e.target.value as CapturePosition)}>
           <option value="current">현재 · {TOW_POSITION_LABELS[d.currentPosition]}</option><option value="astern">선미</option><option value="port">좌현</option><option value="starboard">우현</option><option value="ahead">선수</option><option value="all">네 방향 혼합</option>
         </select></label>
-        <label>렌즈 상태<select aria-label="데이터셋 렌즈 상태" value={d.lensSelection} disabled={d.busy} onChange={e=>d.setLensSelection(e.target.value as LensSelection)}>
+        <label>렌즈 상태<select aria-label="데이터셋 렌즈 상태" value={d.lensSelection} disabled={locked} onChange={e=>d.setLensSelection(e.target.value as LensSelection)}>
           <option value="mixed">자동 혼합</option><option value="clear">맑음</option><option value="blurred">흐림</option><option value="wet">물 튐</option>
         </select></label>
       </div>
@@ -32,12 +33,12 @@ export function DatasetControls({dataset,onRandomize}:{dataset:DatasetController
         ?'선택 위치의 예인줄 감시 시점 · Sag 5단계 + 픽셀 마스크'
         :'선택 위치에서 자유/CCTV 시점 순환 · YOLO 박스 4클래스'}</p>
       <div className="dataset-settings">
-        <label>이미지 수<input aria-label="데이터셋 이미지 수" type="number" min={1} max={500} step={1} value={Number.isFinite(d.count)?d.count:''} disabled={d.busy} onChange={e=>d.setCount(e.target.valueAsNumber)}/></label>
-        <label>무작위 시드<input aria-label="무작위 시드" type="number" min={0} max={4294967295} step={1} value={Number.isFinite(d.seed)?d.seed:''} disabled={d.busy} onChange={e=>d.setSeed(e.target.valueAsNumber)}/></label>
+        <label>이미지 수<input aria-label="데이터셋 이미지 수" type="number" min={1} max={500} step={1} value={Number.isFinite(d.count)?d.count:''} disabled={locked} onChange={e=>d.setCount(e.target.valueAsNumber)}/></label>
+        <label>무작위 시드<input aria-label="무작위 시드" type="number" min={0} max={4294967295} step={1} value={Number.isFinite(d.seed)?d.seed:''} disabled={locked} onChange={e=>d.setSeed(e.target.valueAsNumber)}/></label>
       </div>
       <div className="dataset-actions">
-        {d.busy ? <button onClick={d.cancel}><Square size={13}/>생성 취소</button> : <button className="dataset-primary" onClick={d.start}><Camera size={14}/>AI 데이터셋 캡처</button>}
-        <button aria-label="환경 무작위화" title="환경 무작위화" onClick={onRandomize} disabled={d.busy}><Shuffle size={14}/></button>
+        {d.busy ? <button onClick={d.cancel}><Square size={13}/>생성 취소</button> : <button disabled={externalBusy} className="dataset-primary" onClick={d.start}><Camera size={14}/>AI 데이터셋 캡처</button>}
+        <button aria-label="환경 무작위화" title="환경 무작위화" onClick={onRandomize} disabled={locked}><Shuffle size={14}/></button>
       </div>
       {(d.busy||d.status) && <div className="dataset-progress"><progress max={100} value={d.progress}/><span role="status">{d.status}</span></div>}
       {d.error && <p role="alert" className="dataset-error">{d.error}</p>}

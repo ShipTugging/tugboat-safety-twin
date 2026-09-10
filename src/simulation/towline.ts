@@ -53,14 +53,16 @@ const lowLoadFor=(tensionKn:number)=>1-Math.min(1,Math.max(0,tensionKn)/320);
 /** Parabolic approximation of a rope with `excess` extra length over chord `span`. */
 const geometricSag=(span:number,excess:number)=>Math.sqrt(Math.max(0,3*span*excess/8));
 
-export function computeSagMetrics(start:Vector3,end:Vector3,length:number,tensionKn:number,risk:RiskLevel,ropeSlackM?:number):SagMetrics {
+export function computeSagMetrics(start:Vector3,end:Vector3,length:number,tensionKn:number,risk:RiskLevel,ropeSlackM?:number,ropeSagOverrideM?:number):SagMetrics {
   const span=start.distanceTo(end);
   const excess=ropeSlackM!==undefined&&Number.isFinite(ropeSlackM)
     ?Math.max(0,ropeSlackM)
     :Math.max(0,Math.max(0,length)-span-STAPLE_REACH_M);
   const lowLoad=lowLoadFor(tensionKn);
   const taut=getTowlineState(tensionKn,risk)==='taut';
-  const sag=taut||span<=1e-6?0:softCap(geometricSag(span,excess),sagCap(start,end))*lowLoad;
+  const sag=span<=1e-6?0:ropeSagOverrideM!==undefined&&Number.isFinite(ropeSagOverrideM)
+    ?Math.max(0,Math.min(sagCap(start,end),ropeSagOverrideM))
+    :taut?0:softCap(geometricSag(span,excess),sagCap(start,end))*lowLoad;
   const ratio=span>1e-6?sag/span:0;
   return {spanM:span,sagM:sag,sagRatio:ratio,level:classifySagLevel(ratio),excessM:taut?0:excess*lowLoad,ropeLengthM:span+excess};
 }
@@ -82,8 +84,8 @@ export function solveRopeSlack(start:Vector3,end:Vector3,tensionKn:number,risk:R
   return 8*geometric*geometric/(3*span);
 }
 
-export function createTowlineCurve(start:Vector3,end:Vector3,length:number,tensionKn:number,risk:RiskLevel,ropeSlackM?:number):CatmullRomCurve3 {
-  const {sagM}=computeSagMetrics(start,end,length,tensionKn,risk,ropeSlackM);
+export function createTowlineCurve(start:Vector3,end:Vector3,length:number,tensionKn:number,risk:RiskLevel,ropeSlackM?:number,ropeSagOverrideM?:number):CatmullRomCurve3 {
+  const {sagM}=computeSagMetrics(start,end,length,tensionKn,risk,ropeSlackM,ropeSagOverrideM);
   const points=[0,.25,.5,.75,1].map(t=>new Vector3().lerpVectors(start,end,t).add(new Vector3(0,-Math.sin(Math.PI*t)*sagM,0)));
   return new CatmullRomCurve3(points,false,'centripetal');
 }

@@ -26,8 +26,9 @@ interface Scene3DProps {
   datasetMode:boolean;
   liveCameraMode:CameraMode;
   onCaptureReady:(api:SceneCaptureApi|null)=>void;
+  sequencePlayback?:boolean;
 }
-function CameraController({ params, telemetry, onUpdatePhysics, captureBusy, captureSample }: Pick<Scene3DProps, 'params'|'telemetry'|'onUpdatePhysics'|'captureBusy'|'captureSample'>) {
+function CameraController({ params, telemetry, onUpdatePhysics, captureBusy, captureSample,sequencePlayback }: Pick<Scene3DProps, 'params'|'telemetry'|'onUpdatePhysics'|'captureBusy'|'captureSample'|'sequencePlayback'>) {
   const { camera, size } = useThree();
   const lastMode = useRef<CameraMode | null>(null);
   const previousWidth = useRef(0);
@@ -36,8 +37,8 @@ function CameraController({ params, telemetry, onUpdatePhysics, captureBusy, cap
   useFrame((state, delta) => {
     // Export renders with its own camera. Leave the operator's live camera,
     // orbit target and controller history untouched for exact resume/cancel.
-    if(captureBusy)return;
-    onUpdatePhysics(delta);
+    if(captureBusy&&!sequencePlayback)return;
+    if(!captureBusy)onUpdatePhysics(delta);
     const mode = params.cameraMode;
     if(camera instanceof THREE.PerspectiveCamera && isOnboardCamera(mode)) {
       applyDatasetCamera(camera,params,telemetry,size.width/size.height);
@@ -86,7 +87,7 @@ function CameraController({ params, telemetry, onUpdatePhysics, captureBusy, cap
   });
   return null;
 }
-export function Scene3D({ params, telemetry, onUpdatePhysics, onSelectCamera, onSelectTimeOfDay, captureSample, captureBusy, datasetMode, liveCameraMode, onCaptureReady }: Scene3DProps) {
+export function Scene3D({ params, telemetry, onUpdatePhysics, onSelectCamera, onSelectTimeOfDay, captureSample, captureBusy, datasetMode, liveCameraMode, onCaptureReady,sequencePlayback }: Scene3DProps) {
   const [analysis, setAnalysis] = useState(false);
   const [quality, setQuality] = useState<'standard'|'high'>('high');
   const girting = telemetry.girtingStatus === 'CRITICAL';
@@ -94,17 +95,17 @@ export function Scene3D({ params, telemetry, onUpdatePhysics, onSelectCamera, on
   const hasAlert = girting || suction || telemetry.inWashZone;
   const tugRef=useRef<THREE.Group>(null), shipRef=useRef<THREE.Group>(null), ropeRef=useRef<THREE.Mesh>(null);
   const anchors=getTowlineAnchors(telemetry);
-  const sag=computeSagMetrics(anchors.start,anchors.end,params.towLineLength,telemetry.lineTensionKn,telemetry.girtingStatus,params.ropeSlackM);
+  const sag=computeSagMetrics(anchors.start,anchors.end,params.towLineLength,telemetry.lineTensionKn,telemetry.girtingStatus,params.ropeSlackM,params.ropeSagOverrideM);
   return <div className="scene-viewport">
     <Canvas shadows={quality === 'high'} dpr={quality === 'high' ? [1, 1.5] : 1} gl={{antialias:true,alpha:false,preserveDrawingBuffer:true,powerPreference:'high-performance',toneMapping:THREE.ACESFilmicToneMapping,toneMappingExposure:1.1}}>
       <PerspectiveCamera makeDefault position={[76,48,-100]} fov={43} near={.3} far={1800}/>
       {liveCameraMode === 'orbit' && <OrbitControls enabled={!captureBusy} makeDefault enableDamping dampingFactor={.06} minDistance={25} maxDistance={260} maxPolarAngle={Math.PI/2-.08} target={[(telemetry.shipPosition[0]+telemetry.tugPosition[0])/2,3,(telemetry.shipPosition[2]+telemetry.tugPosition[2])/2]}/>}
-      <CameraController params={params} telemetry={telemetry} onUpdatePhysics={onUpdatePhysics} captureBusy={captureBusy} captureSample={captureSample}/>
+      <CameraController params={params} telemetry={telemetry} onUpdatePhysics={onUpdatePhysics} captureBusy={captureBusy} captureSample={captureSample} sequencePlayback={sequencePlayback}/>
       <HarborEnvironment showTacticalGrid={analysis&&!datasetMode} timeOfDay={params.timeOfDay} telemetry={telemetry} shipSpeed={params.shipSpeed} propellerRpm={params.propellerRpm} highQuality={quality === 'high'} fogDensity={params.fogDensity} sunIntensity={params.sunIntensity} waveStrength={params.waveStrength} simulationTime={captureSample?.time}/>
       <group ref={shipRef}><LargeShip position={telemetry.shipPosition} shipSpeedKnots={params.shipSpeed} timeOfDay={params.timeOfDay} hullColor={params.hullColor}/></group>
       <group ref={tugRef}><Tugboat position={telemetry.tugPosition} rotation={telemetry.tugRotation} isGirtingCritical={girting&&!datasetMode} isInWashTurbulence={telemetry.inWashZone&&!datasetMode} timeOfDay={params.timeOfDay}/></group>
       {params.timeOfDay==='night'&&<MarineFloodlights telemetry={telemetry} shadows={quality==='high'}/>}
-      <TowingLine meshRef={ropeRef} start={anchors.start.toArray()} end={anchors.end.toArray()} tensionKn={telemetry.lineTensionKn} girtingStatus={telemetry.girtingStatus} quickReleaseActive={params.quickReleaseActive} lineLength={params.towLineLength} ropeSlackM={params.ropeSlackM} ropeColor={params.ropeColor} ropeRadius={params.ropeRadius} datasetMode={datasetMode}/>
+      <TowingLine meshRef={ropeRef} start={anchors.start.toArray()} end={anchors.end.toArray()} tensionKn={telemetry.lineTensionKn} girtingStatus={telemetry.girtingStatus} quickReleaseActive={params.quickReleaseActive} lineLength={params.towLineLength} ropeSlackM={params.ropeSlackM} ropeSagOverrideM={params.ropeSagOverrideM} ropeColor={params.ropeColor} ropeRadius={params.ropeRadius} datasetMode={datasetMode}/>
       <HazardZones enabled={analysis&&!datasetMode} inWashZone={telemetry.inWashZone} hullDistanceM={telemetry.hullDistanceM} lineAngleDeg={telemetry.lineAngleDeg} tugPosition={telemetry.tugPosition} shipSpeed={params.shipSpeed} propellerRpm={params.propellerRpm}/>
       <DatasetCaptureBridge sample={captureSample} tug={tugRef} ship={shipRef} rope={ropeRef} onReady={onCaptureReady}/>
     </Canvas>

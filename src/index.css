@@ -251,6 +251,19 @@ fieldset:disabled button,fieldset:disabled select,button:disabled { cursor:defau
 .dataset-kind button[aria-pressed="true"] { background:#24443b; color:#d5eddf; border-color:#59977e; }
 .dataset-image svg { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
 .dataset-mask { margin-top:6px; }
+.risk-log-controls { border:1px solid #446071; border-radius:7px; background:#172a34; }
+.risk-log-controls summary { display:flex; align-items:center; gap:8px; padding:13px; color:#c9dce6; font-size:11px; cursor:pointer; }
+.risk-log-body { padding:0 13px 13px; }
+.risk-log-body label { font-size:10px; color:#a9bfc9; }
+.risk-log-body select { display:block; width:100%; margin-top:6px; background:#10212c; border:1px solid #3e5767; border-radius:4px; padding:8px; color:#dfebf1; font-size:11px; }
+.risk-log-body p { font-size:10px; line-height:1.65; color:#a8bec8; margin:10px 0; }
+.risk-log-actions { display:flex; gap:7px; }
+.risk-log-actions button { display:flex; align-items:center; justify-content:center; gap:5px; flex:1; padding:9px 5px; background:#294858; border:1px solid #567887; border-radius:4px; color:#e1eef1; font-size:10px; }
+.risk-log-actions button:disabled { opacity:.45; }
+.risk-log-body img { display:block; width:100%; margin:10px 0; border-radius:3px; }
+.risk-log-values { display:grid; grid-template-columns:1fr 1fr; gap:7px; font-size:10px; color:#c9e6de; padding-top:8px; }
+.risk-log-values > span:first-child { grid-column:1/-1; }
+.risk-log-body p.risk-log-note { font-size:9px; color:#859fa9; }
 .dataset-capture-options { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
 .dataset-capture-options label { font-size:10px; color:#a8bfbb; min-width:0; }
 .dataset-capture-options select { display:block; width:100%; margin-top:6px; padding:8px 5px; background:#102222; border:1px solid #3a5655; border-radius:4px; color:#dceee6; font-size:11px; }

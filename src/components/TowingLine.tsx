@@ -11,6 +11,7 @@ interface TowingLineProps {
   quickReleaseActive: boolean;
   lineLength: number;
   ropeSlackM?: number;
+  ropeSagOverrideM?: number;
   ropeColor?: string;
   ropeRadius?: number;
   datasetMode?: boolean;
@@ -27,6 +28,7 @@ export const TowingLine: React.FC<TowingLineProps> = ({
   quickReleaseActive,
   lineLength,
   ropeSlackM,
+  ropeSagOverrideM,
   ropeColor = '#d8c4a0',
   ropeRadius = DEFAULT_ROPE_RADIUS,
   datasetMode=false,
@@ -37,8 +39,8 @@ export const TowingLine: React.FC<TowingLineProps> = ({
   const { geometry, color, emissiveIntensity, userData } = useMemo(() => {
     const p1 = new THREE.Vector3(...start);
     const p2 = new THREE.Vector3(...end);
-    const curve = createTowlineCurve(p1,p2,lineLength,tensionKn,girtingStatus,ropeSlackM);
-    const sag = computeSagMetrics(p1,p2,lineLength,tensionKn,girtingStatus,ropeSlackM);
+    const curve = createTowlineCurve(p1,p2,lineLength,tensionKn,girtingStatus,ropeSlackM,ropeSagOverrideM);
+    const sag = computeSagMetrics(p1,p2,lineLength,tensionKn,girtingStatus,ropeSlackM,ropeSagOverrideM);
     const geom = new THREE.TubeGeometry(curve, 64, ropeRadius, 8, false);
 
     let lineColor = ropeColor;
@@ -57,7 +59,7 @@ export const TowingLine: React.FC<TowingLineProps> = ({
       emissiveIntensity: intensity,
       userData: { datasetClass: getTowlineState(tensionKn,girtingStatus)==='taut'?1:2, curve, radius: ropeRadius, sag },
     };
-  }, [start, end, tensionKn, girtingStatus, lineLength, ropeSlackM, ropeColor, ropeRadius, datasetMode]);
+  }, [start, end, tensionKn, girtingStatus, lineLength, ropeSlackM, ropeSagOverrideM, ropeColor, ropeRadius, datasetMode]);
 
   useEffect(() => () => geometry.dispose(), [geometry]);
   // If quick release activated, line is detached

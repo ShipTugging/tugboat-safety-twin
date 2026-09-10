@@ -31,6 +31,8 @@ export interface SimulationParams {
   lensCondition?: 'clear'|'blurred'|'wet';
   lensWetness?: number;
   lensSeed?: number;
+  /** Continuous experiment's dynamic sag, meters; absent in normal/dataset mode. */
+  ropeSagOverrideM?: number;
   /** Where the tug operates around the main vessel. Defaults to astern. */
   towPosition?: TowPosition;
 }
