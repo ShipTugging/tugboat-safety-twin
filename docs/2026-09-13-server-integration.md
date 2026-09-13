@@ -49,6 +49,7 @@ POST /analyze, Content-Type application/json:
 - 서버 주소 검사, null/비정상 숫자·상태 거부, 실제 모드에서 정답 힌트 제외 등 포함 68개 테스트 통과. TypeScript·Vite 빌드 통과.
 - 코드 리뷰에서 차단 문제 없음. 기존 서버 알고리즘의 각도/임계값 문제는 서버 담당자가 별도 수정해야 한다.
 - 데스크톱 1440×1000에서 기존 좌우 배치와 실제 CCTV 표시 확인. DOM 이미지 원본 960×540 확인. 연결 실패 후 재연결 성공 확인.
+- 코드 커밋 ffbb8f4를 GitHub main에 push. Vercel 배포 dpl_AkcJLvSmxdXLhw54bc6crkRTgf5L READY 및 기존 도메인 연결 확인. 공개 사이트에서도 연결 패널과 입력/버튼 표시 확인. 운영 Python 서버 URL은 아직 제공되지 않아 공개 사이트→운영 서버 통신은 별도 확인이 필요하다.
 
 ## 트러블슈팅
 
