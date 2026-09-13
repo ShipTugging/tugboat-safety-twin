@@ -9,6 +9,8 @@ import { Tugboat } from './Tugboat';
 import { TowingLine } from './TowingLine';
 import { HazardZones } from './HazardZones';
 import { DatasetCaptureBridge } from './DatasetCaptureBridge';
+import { ServerCaptureBridge } from './ServerCaptureBridge';
+import type { ServerAnalysis } from '../hooks/useServerAnalysis';
 import { MarineFloodlights } from './MarineFloodlights';
 import { applyDatasetCamera, isOnboardCamera } from '../dataset/camera';
 import { SAG_LEVEL_NAMES, computeSagMetrics, getTowlineAnchors } from '../simulation/towline';
@@ -27,6 +29,7 @@ interface Scene3DProps {
   liveCameraMode:CameraMode;
   onCaptureReady:(api:SceneCaptureApi|null)=>void;
   sequencePlayback?:boolean;
+  serverAnalysis?:ServerAnalysis;
 }
 function CameraController({ params, telemetry, onUpdatePhysics, captureBusy, captureSample,sequencePlayback }: Pick<Scene3DProps, 'params'|'telemetry'|'onUpdatePhysics'|'captureBusy'|'captureSample'|'sequencePlayback'>) {
   const { camera, size } = useThree();
@@ -87,7 +90,7 @@ function CameraController({ params, telemetry, onUpdatePhysics, captureBusy, cap
   });
   return null;
 }
-export function Scene3D({ params, telemetry, onUpdatePhysics, onSelectCamera, onSelectTimeOfDay, captureSample, captureBusy, datasetMode, liveCameraMode, onCaptureReady,sequencePlayback }: Scene3DProps) {
+export function Scene3D({ params, telemetry, onUpdatePhysics, onSelectCamera, onSelectTimeOfDay, captureSample, captureBusy, datasetMode, liveCameraMode, onCaptureReady,sequencePlayback,serverAnalysis }: Scene3DProps) {
   const [analysis, setAnalysis] = useState(false);
   const [quality, setQuality] = useState<'standard'|'high'>('high');
   const girting = telemetry.girtingStatus === 'CRITICAL';
@@ -108,6 +111,7 @@ export function Scene3D({ params, telemetry, onUpdatePhysics, onSelectCamera, on
       <TowingLine meshRef={ropeRef} start={anchors.start.toArray()} end={anchors.end.toArray()} tensionKn={telemetry.lineTensionKn} girtingStatus={telemetry.girtingStatus} quickReleaseActive={params.quickReleaseActive} lineLength={params.towLineLength} ropeSlackM={params.ropeSlackM} ropeSagOverrideM={params.ropeSagOverrideM} ropeColor={params.ropeColor} ropeRadius={params.ropeRadius} datasetMode={datasetMode}/>
       <HazardZones enabled={analysis&&!datasetMode} inWashZone={telemetry.inWashZone} hullDistanceM={telemetry.hullDistanceM} lineAngleDeg={telemetry.lineAngleDeg} tugPosition={telemetry.tugPosition} shipSpeed={params.shipSpeed} propellerRpm={params.propellerRpm}/>
       <DatasetCaptureBridge sample={captureSample} tug={tugRef} ship={shipRef} rope={ropeRef} onReady={onCaptureReady}/>
+      {serverAnalysis&&<ServerCaptureBridge params={params} telemetry={telemetry} analysis={serverAnalysis}/>}
     </Canvas>
     <div className="scene-top">
       <div className="scene-title"><span className="eyebrow">{captureBusy?'DATASET CAPTURE':'TUG GUARD'}</span></div>

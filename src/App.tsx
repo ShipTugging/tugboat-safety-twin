@@ -10,6 +10,7 @@ import { KOREAN_PRESETS } from './components/ControlPanel';
 import { useDatasetExporter } from './hooks/useDatasetExporter';
 import { randomizeEnvironment } from './dataset/environment';
 import { useRiskRecorder } from './hooks/useRiskRecorder';
+import { useServerAnalysis } from './hooks/useServerAnalysis';
 
 const DEFAULT_PARAMS: SimulationParams = {
   tugSteeringAngle: 18,
@@ -31,6 +32,7 @@ export function App() {
   const dataset=useDatasetExporter(params.towPosition??'astern');
   const riskRecorder=useRiskRecorder(params,dataset.busy);
   const operationBusy=dataset.busy||riskRecorder.busy;
+  const serverAnalysis=useServerAnalysis(operationBusy);
   const activeSample=dataset.sample??riskRecorder.sample;
 
   // Hydrodynamics & Sensor Fusion Hook
@@ -167,7 +169,7 @@ export function App() {
       </header>
       <main className={'workspace '+(is3DFullscreen?'expanded':'')}>
         <section className="scene-column" aria-label="해양 디지털 트윈">
-          <Scene3D params={activeSample?.params??params} telemetry={shownTelemetry} onUpdatePhysics={updatePhysics} onSelectCamera={handleSelectCamera} onSelectTimeOfDay={handleSelectTimeOfDay} captureSample={activeSample} captureBusy={operationBusy} datasetMode={dataset.enabled||!!riskRecorder.sample} liveCameraMode={params.cameraMode} onCaptureReady={dataset.setCaptureApi} sequencePlayback={!!riskRecorder.sample}/>
+          <Scene3D params={activeSample?.params??params} telemetry={shownTelemetry} onUpdatePhysics={updatePhysics} onSelectCamera={handleSelectCamera} onSelectTimeOfDay={handleSelectTimeOfDay} captureSample={activeSample} captureBusy={operationBusy} datasetMode={dataset.enabled||!!riskRecorder.sample||serverAnalysis.state==='running'} liveCameraMode={params.cameraMode} onCaptureReady={dataset.setCaptureApi} sequencePlayback={!!riskRecorder.sample} serverAnalysis={serverAnalysis}/>
           <section className="scenario-dock" aria-label="시나리오 선택">
             <div className="scenario-heading"><span className="eyebrow">SCENARIOS</span><button disabled={operationBusy} onClick={handleReset} title="기본값 복원"><RotateCcw size={13}/>초기화</button></div>
             <fieldset disabled={operationBusy} className="scenario-grid">{KOREAN_PRESETS.map((preset,index)=>{
@@ -176,7 +178,7 @@ export function App() {
             })}</fieldset>
           </section>
         </section>
-        {!is3DFullscreen && <Dashboard params={activeSample?.params??params} telemetry={shownTelemetry} onChangeParams={handleParamChange} onReset={handleReset} onTriggerQuickRelease={handleTriggerQuickRelease} onOpenVerificationModal={()=>setIsVerificationModalOpen(true)} onToggleSound={handleToggleSound} dataset={dataset} onRandomize={()=>handleParamChange(randomizeEnvironment())} riskRecorder={riskRecorder}/ >}
+        {!is3DFullscreen && <Dashboard params={activeSample?.params??params} telemetry={shownTelemetry} onChangeParams={handleParamChange} onReset={handleReset} onTriggerQuickRelease={handleTriggerQuickRelease} onOpenVerificationModal={()=>setIsVerificationModalOpen(true)} onToggleSound={handleToggleSound} dataset={dataset} onRandomize={()=>handleParamChange(randomizeEnvironment())} riskRecorder={riskRecorder} serverAnalysis={serverAnalysis}/>}
       </main>
       <footer className="app-footer"><span><i/>SIMULATION ACTIVE</span><span>실제 운항 판단용이 아닌 시나리오 시뮬레이터</span><span>TUG GUARD / 2026</span></footer>
       <VerificationModal isOpen={isVerificationModalOpen} onClose={()=>setIsVerificationModalOpen(false)} currentParams={params} currentTelemetry={telemetry} onChangeParams={handleParamChange}/>

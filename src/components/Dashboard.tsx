@@ -12,6 +12,8 @@ import { computeSagMetrics, getTowlineAnchors } from '../simulation/towline';
 import { TOW_POSITION_LABELS } from '../simulation/towPosition';
 import { RiskLogControls } from './RiskLogControls';
 import type { RiskRecorder } from '../hooks/useRiskRecorder';
+import type { ServerAnalysis } from '../hooks/useServerAnalysis';
+import { ServerAnalysisPanel } from './ServerAnalysisPanel';
 
 interface DashboardProps {
   params: SimulationParams; telemetry: TelemetryState;
@@ -20,6 +22,7 @@ interface DashboardProps {
   onOpenVerificationModal: () => void; onToggleSound?: () => void;
   dataset:DatasetController;
   riskRecorder:RiskRecorder;
+  serverAnalysis:ServerAnalysis;
   onRandomize:()=>void;
 }
 export function Dashboard(props: DashboardProps) {
@@ -40,6 +43,7 @@ export function Dashboard(props: DashboardProps) {
         {([{ id: 'overview', label: '운항 개요', icon: Crosshair }, { id: 'radar', label: '레이더', icon: Radio }, { id: 'chart', label: '추이', icon: Activity }, { id: 'sensors', label: '센서', icon: Crosshair }] as const).map(item => <button key={item.id} aria-pressed={tab === item.id} onClick={() => setTab(item.id)}><item.icon size={14} />{item.label}</button>)}
       </nav>
       <div className="panel-scroll">
+        <ServerAnalysisPanel analysis={props.serverAnalysis}/>
         <RiskLogControls recorder={props.riskRecorder} datasetBusy={props.dataset.busy}/>
         <DatasetControls dataset={props.dataset} onRandomize={props.onRandomize} externalBusy={props.riskRecorder.busy}/>
         {tab === 'overview' && <>
