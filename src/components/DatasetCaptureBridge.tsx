@@ -141,6 +141,13 @@ export function DatasetCaptureBridge({sample,tug,ship,rope,onReady}:Props) {
       };
       const onboard=isOnboardCamera(sample.params.cameraMode);
       const camera3={position:captureCamera.position.toArray(),quaternion:captureCamera.quaternion.toArray(),fov:captureCamera.fov,aspect:captureCamera.aspect,near:captureCamera.near,far:captureCamera.far};
+      // The local video renderer only needs the RGB frame. Skipping YOLO boxes,
+      // ray probes, segmentation and mask rendering keeps 600-frame video export
+      // responsive; ordinary dataset captures retain the full path below.
+      if(sample.id.startsWith('video:')) {
+        p.resolve({jpeg,labels:[],camera:camera3});
+        return;
+      }
       if(sample.kind==='sag') {
         let mask:string|undefined, sag:CapturedFrame['sag'];
         if(rope.current&&!sample.params.quickReleaseActive) {

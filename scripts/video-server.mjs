@@ -2,7 +2,7 @@
 import {createServer} from 'vite';
 import {mkdir,writeFile} from 'node:fs/promises';
 import path from 'node:path';
-const output=path.resolve('artifacts.local/towline-video');
+const output=path.resolve('artifacts.local/towline-video-ahead');
 await mkdir(path.join(output,'frames'),{recursive:true});
 await mkdir(path.join(output,'masks'),{recursive:true});
 await mkdir(path.join(output,'metadata'),{recursive:true});
