@@ -2,9 +2,9 @@ import type { SimulationParams } from '../types/maritime';
 import { createDroplets } from './lens';
 
 /** RGB-only optical degradation; no coordinate warp, so masks stay aligned. */
-export function encodeDatasetJpeg(source:HTMLCanvasElement,params:SimulationParams):string {
+function encodeDatasetImage(source:HTMLCanvasElement,params:SimulationParams,format:'image/jpeg'|'image/png'):string {
   const blur=Math.max(0,params.imageBlurPx??0),wetness=Math.max(0,Math.min(1,params.lensWetness??0));
-  if(blur===0&&wetness===0)return source.toDataURL('image/jpeg',.9);
+  if(blur===0&&wetness===0)return source.toDataURL(format,.9);
   const canvas=document.createElement('canvas');canvas.width=source.width;canvas.height=source.height;
   const ctx=canvas.getContext('2d');
   if(!ctx)throw new Error('렌즈 효과를 위한 Canvas를 생성하지 못했습니다.');
@@ -27,5 +27,8 @@ export function encodeDatasetJpeg(source:HTMLCanvasElement,params:SimulationPara
       ctx.strokeStyle='rgba(245,252,255,0.28)';ctx.lineWidth=Math.max(.6,scale);ctx.stroke();ctx.restore();
     }
   }
-  return canvas.toDataURL('image/jpeg',.9);
+  return canvas.toDataURL(format,.9);
 }
+
+export const encodeDatasetJpeg=(source:HTMLCanvasElement,params:SimulationParams)=>encodeDatasetImage(source,params,'image/jpeg');
+export const encodeDatasetPng=(source:HTMLCanvasElement,params:SimulationParams)=>encodeDatasetImage(source,params,'image/png');

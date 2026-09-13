@@ -7,6 +7,8 @@ import { boxToPolygon, estimateSag2D, projectRopeSegmentation } from '../dataset
 import type { CaptureSample, CapturedFrame, FrameLabel, SceneCaptureApi } from '../dataset/types';
 import type { SagMetrics } from '../simulation/towline';
 import { encodeDatasetJpeg } from '../dataset/lensRenderer';
+import { applyV2Camera } from '../dataset/v2/scenarios';
+import type { V2CaptureHandler } from '../dataset/v2/capture';
 
 interface Props {
   sample:CaptureSample|null;
@@ -14,6 +16,7 @@ interface Props {
   ship:React.RefObject<Object3D>;
   rope:React.RefObject<Mesh>;
   onReady:(api:SceneCaptureApi|null)=>void;
+  onV2Capture?:V2CaptureHandler;
 }
 interface Pending {id:string;frames:number;resolve:(frame:CapturedFrame)=>void;reject:(error:Error)=>void;clean:()=>void}
 const abortError=()=>new DOMException('캡처 취소됨','AbortError');
@@ -87,7 +90,7 @@ function renderRopeMask(gl:WebGLRenderer,scene:Scene,camera:PerspectiveCamera,ro
   }
 }
 
-export function DatasetCaptureBridge({sample,tug,ship,rope,onReady}:Props) {
+export function DatasetCaptureBridge({sample,tug,ship,rope,onReady,onV2Capture}:Props) {
   const {gl,scene,camera}=useThree();
   const pending=useRef<Pending|null>(null);
   const captureCamera=useMemo(()=>new PerspectiveCamera(),[]);
@@ -118,13 +121,21 @@ export function DatasetCaptureBridge({sample,tug,ship,rope,onReady}:Props) {
 
   // Positive priority owns the final render: transforms and shader uniforms
   // from every normal useFrame subscriber have already been applied.
-  useFrame(()=>{
+  useFrame(async()=>{
     const p=pending.current;
     if(!p||!sample||p.id!==sample.id||++p.frames<2) {gl.render(scene,camera);return;}
     pending.current=null;p.clean();
     const oldSize=gl.getSize(new Vector2()), oldDpr=gl.getPixelRatio();
     try {
       if(!tug.current||!ship.current)throw new Error('선박 모델이 준비되지 않았습니다.');
+      if(sample.v2) {
+        if(!rope.current||sample.params.quickReleaseActive)throw new Error('V2 requires a positive towline scene');
+        applyV2Camera(captureCamera,sample);scene.updateMatrixWorld(true);
+        if(!onV2Capture)throw new Error('V2 local capture adapter unavailable');
+        const frame=await onV2Capture(gl,scene,captureCamera,rope.current,sample);
+        p.resolve({v2:frame,jpeg:'',labels:[],camera:frame.metadata.camera});
+        return;
+      }
       applyDatasetCamera(captureCamera,sample.params,sample.telemetry,sample.width/sample.height);
       gl.setPixelRatio(1);gl.setSize(sample.width,sample.height,false);
       scene.updateMatrixWorld(true);

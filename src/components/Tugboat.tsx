@@ -10,6 +10,7 @@ interface TugboatProps {
   isGirtingCritical: boolean;
   isInWashTurbulence: boolean;
   timeOfDay?: TimeOfDay;
+  simulationTime?: number;
 }
 
 export const Tugboat: React.FC<TugboatProps> = ({
@@ -18,13 +19,14 @@ export const Tugboat: React.FC<TugboatProps> = ({
   isGirtingCritical,
   isInWashTurbulence,
   timeOfDay = 'day',
+  simulationTime,
 }) => {
   const isNight = timeOfDay === 'night';
   const radarRef = useRef<THREE.Group>(null);
 
   useFrame((_, delta) => {
     if (radarRef.current) {
-      radarRef.current.rotation.y += delta * 6;
+      radarRef.current.rotation.y = simulationTime===undefined?radarRef.current.rotation.y+delta*6:simulationTime*6;
     }
   });
 

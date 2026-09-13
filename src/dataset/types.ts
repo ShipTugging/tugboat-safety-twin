@@ -2,6 +2,8 @@ import type { SimulationParams, TelemetryState } from '../types/maritime';
 import type { YoloBox } from './projection';
 import type { Polygon, Sag2D } from './segmentation';
 import type { SagMetrics } from '../simulation/towline';
+import type { V2Scenario } from './v2/scenarios';
+import type { V2Capture } from './v2/capture';
 
 export type DatasetKind='detection'|'sag';
 export const CLASS_NAMES=['Tugboat','Towline_Taut','Towline_Slack','Ship_Stern'] as const;
@@ -17,6 +19,7 @@ export interface CaptureSample {
   time:number;
   width:number;
   height:number;
+  v2?:V2Scenario;
 }
 export interface FrameLabel {classId:number;box:YoloBox;polygon?:Polygon}
 export interface FrameSag {
@@ -26,6 +29,7 @@ export interface FrameSag {
   ropeRadiusM:number;
 }
 export interface CapturedFrame {
+  v2?:V2Capture;
   jpeg:string;
   /** Pixel-exact binary rope mask (PNG data URL); sag kind only. */
   mask?:string;

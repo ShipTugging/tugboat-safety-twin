@@ -156,3 +156,10 @@ npm run preview
 ## 라이선스
 
 MIT License.
+
+
+## Dataset V2 positive pilot
+
+The local `npm run dataset:v2` command exports PNG RGB, accurate binary visible
+towline masks and metadata for the single-class Vision pipeline. V1 export is
+preserved. See [Dataset V2 commands and policies](docs/DATASET_V2.md).

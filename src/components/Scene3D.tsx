@@ -16,6 +16,7 @@ import { applyDatasetCamera, isOnboardCamera } from '../dataset/camera';
 import { SAG_LEVEL_NAMES, computeSagMetrics, getTowlineAnchors } from '../simulation/towline';
 import { TOW_POSITION_LABELS } from '../simulation/towPosition';
 import type { CaptureSample, SceneCaptureApi } from '../dataset/types';
+import type { V2CaptureHandler } from '../dataset/v2/capture';
 import { Camera, Layers, Sun, Sunset, Moon, Compass, AlertTriangle, SlidersHorizontal, Spline } from 'lucide-react';
 
 interface Scene3DProps {
@@ -28,6 +29,7 @@ interface Scene3DProps {
   datasetMode:boolean;
   liveCameraMode:CameraMode;
   onCaptureReady:(api:SceneCaptureApi|null)=>void;
+  onV2Capture?:V2CaptureHandler;
   sequencePlayback?:boolean;
   serverAnalysis?:ServerAnalysis;
 }
@@ -90,7 +92,7 @@ function CameraController({ params, telemetry, onUpdatePhysics, captureBusy, cap
   });
   return null;
 }
-export function Scene3D({ params, telemetry, onUpdatePhysics, onSelectCamera, onSelectTimeOfDay, captureSample, captureBusy, datasetMode, liveCameraMode, onCaptureReady,sequencePlayback,serverAnalysis }: Scene3DProps) {
+export function Scene3D({ params, telemetry, onUpdatePhysics, onSelectCamera, onSelectTimeOfDay, captureSample, captureBusy, datasetMode, liveCameraMode, onCaptureReady,onV2Capture,sequencePlayback,serverAnalysis }: Scene3DProps) {
   const [analysis, setAnalysis] = useState(false);
   const [quality, setQuality] = useState<'standard'|'high'>('high');
   const girting = telemetry.girtingStatus === 'CRITICAL';
@@ -105,12 +107,12 @@ export function Scene3D({ params, telemetry, onUpdatePhysics, onSelectCamera, on
       {liveCameraMode === 'orbit' && <OrbitControls enabled={!captureBusy} makeDefault enableDamping dampingFactor={.06} minDistance={25} maxDistance={260} maxPolarAngle={Math.PI/2-.08} target={[(telemetry.shipPosition[0]+telemetry.tugPosition[0])/2,3,(telemetry.shipPosition[2]+telemetry.tugPosition[2])/2]}/>}
       <CameraController params={params} telemetry={telemetry} onUpdatePhysics={onUpdatePhysics} captureBusy={captureBusy} captureSample={captureSample} sequencePlayback={sequencePlayback}/>
       <HarborEnvironment showTacticalGrid={analysis&&!datasetMode} timeOfDay={params.timeOfDay} telemetry={telemetry} shipSpeed={params.shipSpeed} propellerRpm={params.propellerRpm} highQuality={quality === 'high'} fogDensity={params.fogDensity} sunIntensity={params.sunIntensity} waveStrength={params.waveStrength} simulationTime={captureSample?.time}/>
-      <group ref={shipRef}><LargeShip position={telemetry.shipPosition} shipSpeedKnots={params.shipSpeed} timeOfDay={params.timeOfDay} hullColor={params.hullColor}/></group>
-      <group ref={tugRef}><Tugboat position={telemetry.tugPosition} rotation={telemetry.tugRotation} isGirtingCritical={girting&&!datasetMode} isInWashTurbulence={telemetry.inWashZone&&!datasetMode} timeOfDay={params.timeOfDay}/></group>
+      <group ref={shipRef}><LargeShip position={telemetry.shipPosition} shipSpeedKnots={params.shipSpeed} timeOfDay={params.timeOfDay} hullColor={params.hullColor} simulationTime={captureSample?.v2?captureSample.time:undefined}/></group>
+      <group ref={tugRef}><Tugboat position={telemetry.tugPosition} rotation={telemetry.tugRotation} isGirtingCritical={girting&&!datasetMode} isInWashTurbulence={telemetry.inWashZone&&!datasetMode} timeOfDay={params.timeOfDay} simulationTime={captureSample?.v2?captureSample.time:undefined}/></group>
       {params.timeOfDay==='night'&&<MarineFloodlights telemetry={telemetry} shadows={quality==='high'}/>}
       <TowingLine meshRef={ropeRef} start={anchors.start.toArray()} end={anchors.end.toArray()} tensionKn={telemetry.lineTensionKn} girtingStatus={telemetry.girtingStatus} quickReleaseActive={params.quickReleaseActive} lineLength={params.towLineLength} ropeSlackM={params.ropeSlackM} ropeSagOverrideM={params.ropeSagOverrideM} ropeColor={params.ropeColor} ropeRadius={params.ropeRadius} datasetMode={datasetMode}/>
       <HazardZones enabled={analysis&&!datasetMode} inWashZone={telemetry.inWashZone} hullDistanceM={telemetry.hullDistanceM} lineAngleDeg={telemetry.lineAngleDeg} tugPosition={telemetry.tugPosition} shipSpeed={params.shipSpeed} propellerRpm={params.propellerRpm}/>
-      <DatasetCaptureBridge sample={captureSample} tug={tugRef} ship={shipRef} rope={ropeRef} onReady={onCaptureReady}/>
+      <DatasetCaptureBridge sample={captureSample} tug={tugRef} ship={shipRef} rope={ropeRef} onReady={onCaptureReady} onV2Capture={onV2Capture}/>
       {serverAnalysis&&<ServerCaptureBridge params={params} telemetry={telemetry} analysis={serverAnalysis}/>}
     </Canvas>
     <div className="scene-top">

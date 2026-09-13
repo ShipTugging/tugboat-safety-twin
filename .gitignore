@@ -28,3 +28,11 @@ dist-ssr
 # Never commit local credentials or environment files.
 .env
 .env.*
+
+# Dataset V2 runs, derived labels and local QA.
+towline_dataset_v2/
+towline_yolo_seg_v2/
+artifacts.local/
+
+# Local Colab exports contain large generated images, labels and archives.
+colab_yolo_v2/

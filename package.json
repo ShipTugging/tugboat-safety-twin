@@ -8,7 +8,10 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test:physics": "node scripts/verify-physics.mjs",
-    "test": "node --import tsx --test tests/*.test.ts"
+    "test": "node --import tsx --test tests/*.test.ts",
+    "dataset:v2": "node --import tsx scripts/generate-dataset-v2.mjs",
+    "dataset:v2:verify": "python3 scripts/verify-dataset-v2.py",
+    "test:dataset-v2-browser": "node scripts/test-dataset-v2-browser.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^9.106.0",
@@ -30,6 +33,7 @@
     "@types/three": "^0.165.0",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.19",
+    "playwright": "^1.63.0",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.4",
     "tsx": "^4.20.6",

@@ -9,9 +9,10 @@ interface LargeShipProps {
   shipSpeedKnots: number;
   timeOfDay?: TimeOfDay;
   hullColor?: string;
+  simulationTime?: number;
 }
 
-export const LargeShip: React.FC<LargeShipProps> = ({ position, shipSpeedKnots, timeOfDay = 'day', hullColor = '#3d5261' }) => {
+export const LargeShip: React.FC<LargeShipProps> = ({ position, shipSpeedKnots, timeOfDay = 'day', hullColor = '#3d5261', simulationTime }) => {
   const isNight = timeOfDay === 'night';
   const radarMainRef = useRef<THREE.Group>(null);
   const radarSubRef = useRef<THREE.Group>(null);
@@ -83,13 +84,13 @@ export const LargeShip: React.FC<LargeShipProps> = ({ position, shipSpeedKnots, 
 
   useFrame((_, delta) => {
     if (radarMainRef.current) {
-      radarMainRef.current.rotation.y += delta * 3.8;
+      radarMainRef.current.rotation.y = simulationTime===undefined?radarMainRef.current.rotation.y+delta*3.8:simulationTime*3.8;
     }
     if (radarSubRef.current) {
-      radarSubRef.current.rotation.y += delta * 2.2;
+      radarSubRef.current.rotation.y = simulationTime===undefined?radarSubRef.current.rotation.y+delta*2.2:simulationTime*2.2;
     }
     if (propRef.current) {
-      propRef.current.rotation.z += delta * (shipSpeedKnots * 2.4 + 1.2);
+      propRef.current.rotation.z = simulationTime===undefined?propRef.current.rotation.z+delta*(shipSpeedKnots*2.4+1.2):simulationTime*(shipSpeedKnots*2.4+1.2);
     }
   });
 
