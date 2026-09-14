@@ -4,6 +4,7 @@
 
 - [공개 사이트](https://tugboat-safety-twin.vercel.app)
 - 기술: React 18 · TypeScript · Vite 5 · Three.js · React Three Fiber · Tailwind CSS
+- [Multimodal Recording V1](docs/MULTIMODAL_RECORDING_V1.md): shared simulation clock으로 24 FPS 영상과 100 Hz IMU를 기록하는 로컬 도구
 
 ## 화면과 기능
 

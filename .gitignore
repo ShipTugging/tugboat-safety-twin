@@ -36,3 +36,7 @@ artifacts.local/
 
 # Local Colab exports contain large generated images, labels and archives.
 colab_yolo_v2/
+
+# Local multimodal recording sessions (video, frames and sensor exports).
+recordings/
+.venv-recording/
