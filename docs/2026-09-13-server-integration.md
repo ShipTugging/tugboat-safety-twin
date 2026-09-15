@@ -6,12 +6,11 @@
 
 1. 저장소 루트에서 `python server/integration_server.py`를 실행한다. 서버는 기동 시 `server/models/best.pt`를 로드한다.
 2. 관제 패널의 **Python 서버 분석**에 서버 기본 주소를 입력한다. `/analyze`가 아닌 `http://127.0.0.1:8000` 또는 서버 LAN 주소를 입력한다.
-3. 연결 계약만 시험할 때는 **더미 서버 통신 테스트**를 켠다. 이 모드는 이미지 없이 힌트 기반 마스크를 사용하며 YOLO 성능 시험이 아니다.
-4. 실제 모델 분석은 더미 체크를 끄고 **연결·분석 시작**을 누른다. `/health`가 ok면 960×540 `TUG_SAG_CAM` 이미지와 동기 IMU를 최대 5Hz로 전송한다.
-5. CCTV, 신뢰도, Sag, 영상 각도, 보정 각도, 롤·롤 속도, 융합 모드, 서버 위험 상태를 확인한다.
-6. 새 시나리오마다 **서버 초기화**를 눌러 전역 판정 이력을 지운다. **분석 중지** 후에도 마지막 응답은 회색으로 남는다.
+3. **연결·분석 시작**을 누른다. `/health`가 ok면 960×540 `TUG_SAG_CAM` 이미지와 동기 IMU를 최대 5Hz로 전송한다.
+4. CCTV, 신뢰도, Sag, 영상 각도, 보정 각도, 롤·롤 속도, 융합 모드, 서버 위험 상태를 확인한다.
+5. 새 시나리오마다 **서버 초기화**를 눌러 전역 판정 이력을 지운다. **분석 중지** 후에도 마지막 응답은 회색으로 남는다.
 
-실제 모델 모드에서는 `confidence`/`sag_ratio_hint`/`angle_hint_deg`를 전송하지 않는다. 프론트엔드의 체크 해제는 서버에 YOLO를 설치하거나 모델 파일을 바꾸는 동작이 아니라, 이미 실행 중인 서버에 이미지 입력을 선택하는 동작이다.
+프론트엔드는 `confidence`/`sag_ratio_hint`/`angle_hint_deg`를 전송하지 않는다. `/analyze`는 CCTV 이미지가 필수이며 실제 YOLO-Seg 추론만 수행한다.
 
 ## 요청/응답 계약
 
@@ -27,7 +26,7 @@ POST /analyze, Content-Type application/json:
 }
 ```
 
-더미 모드만 confidence/sag_ratio_hint/angle_hint_deg를 추가한다. hint는 카메라에 투영된 시뮬레이션 줄 중심선에서 계산하며 실제 감지가 아니다. 줄 분리 시 더미 confidence=0.
+Three.js의 예인줄 3D 좌표나 계산된 Sag·각도는 요청에 포함하지 않는다.
 
 응답 필수: timestamp, fusion_mode, confidence, sag_ratio, towline_angle_pixel_deg, towline_angle_corrected_deg, roll_deg, roll_rate_deg_s, risk_state. 비전 값은 null을 허용해 관측 없음으로 표시한다. 검출 성공 시 `fusion_mode`는 `vision_imu_fused`/`imu_primary`/`imu_only` 중 하나이고, 미검출 시 `fusion_mode=null`, `risk_state=UNKNOWN`이다. `UNKNOWN`은 안전 상태가 아니라 예인줄 관측 불가 상태다. 그 외 위험 상태는 Normal/Loaded/GirtingRisk/Developing/Critical이다.
 

@@ -4,7 +4,7 @@ export interface RiskResponse {
  sag_ratio:number|null;towline_angle_pixel_deg:number|null;towline_angle_corrected_deg:number|null;
  roll_deg:number;roll_rate_deg_s:number;risk_state:typeof RISK_STATES[number];
 }
-export interface AnalysisFrame {jpeg:string;timestamp:number;rollDeg:number;rollRateDegS:number;sagRatio:number;angleDeg:number;detached:boolean}
+export interface AnalysisFrame {jpeg:string;timestamp:number;rollDeg:number;rollRateDegS:number}
 export function normalizeServerUrl(value:string):string {
  const u=new URL(value.trim());
  if(!['http:','https:'].includes(u.protocol)||u.username||u.password||u.search||u.hash)throw Error('HTTP(S) 서버 주소만 입력하세요. 인증정보·쿼리는 포함할 수 없습니다.');
@@ -22,7 +22,6 @@ export function parseRiskResponse(value:unknown):RiskResponse {
     (riskState==='UNKNOWN'?fusionMode!==null:!validFusionModes.includes(String(fusionMode))))throw Error('서버 상태 또는 신뢰도 형식 오류');
  return r as unknown as RiskResponse;
 }
-export function makeAnalyzeRequest(frame:AnalysisFrame,frameId:string,dummy:boolean,confidence:number){
- return {image_base64:frame.jpeg,roll_deg:frame.rollDeg,roll_rate_deg_s:frame.rollRateDegS,frame_id:frameId,captured_at_ms:frame.timestamp,
- ...(dummy?{confidence:frame.detached?0:confidence,sag_ratio_hint:frame.sagRatio,angle_hint_deg:frame.angleDeg}:{})};
+export function makeAnalyzeRequest(frame:AnalysisFrame,frameId:string){
+ return {image_base64:frame.jpeg,roll_deg:frame.rollDeg,roll_rate_deg_s:frame.rollRateDegS,frame_id:frameId,captured_at_ms:frame.timestamp};
 }

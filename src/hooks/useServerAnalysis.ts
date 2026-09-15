@@ -2,11 +2,11 @@ import {useCallback,useEffect,useRef,useState} from 'react';
 import {makeAnalyzeRequest,normalizeServerUrl,parseRiskResponse,type AnalysisFrame,type RiskResponse} from '../server/protocol';
 const describeError=(e:unknown)=>e instanceof TypeError?'연결 실패 · 서버 주소, CORS 및 HTTPS 설정을 확인하세요.':e instanceof Error?e.message:'서버 요청 실패';
 export function useServerAnalysis(paused:boolean){
- const [url,setUrl]=useState('http://127.0.0.1:8000'),[dummy,setDummy]=useState(true),[confidence,setConfidence]=useState(.9);
+ const [url,setUrl]=useState('http://127.0.0.1:8000');
  const [state,setState]=useState<'off'|'connecting'|'running'|'error'>('off'),[message,setMessage]=useState('서버 주소를 입력하고 연결하세요.');
  const [result,setResult]=useState<{frame:AnalysisFrame;response:RiskResponse;latency:number;id:string}|null>(null);
  const active=useRef(false),controller=useRef<AbortController|null>(null),generation=useRef(0),next=useRef(0),sequence=useRef(0);
- const config=useRef({url,dummy,confidence,paused});config.current={url,dummy,confidence,paused};
+ const config=useRef({url,paused});config.current={url,paused};
  const stop=useCallback(()=>{active.current=false;generation.current++;controller.current?.abort();controller.current=null;setState('off');setMessage('중지 · 마지막 수신 결과');},[]);
  useEffect(()=>()=>{active.current=false;generation.current++;controller.current?.abort();},[]);
  const request=async(base:string,path:string,signal:AbortSignal,body?:unknown)=>{
@@ -33,7 +33,7 @@ export function useServerAnalysis(paused:boolean){
   const frameId=`${id}:${++sequence.current}`,started=performance.now(),settings={...config.current};
   const timer=setTimeout(()=>c.abort(),5000);
   try{
-   const raw=await request(normalizeServerUrl(settings.url),'/analyze',c.signal,makeAnalyzeRequest(frame,frameId,settings.dummy,settings.confidence));
+   const raw=await request(normalizeServerUrl(settings.url),'/analyze',c.signal,makeAnalyzeRequest(frame,frameId));
    if(raw.frame_id!==undefined&&raw.frame_id!==frameId)throw Error('응답 프레임 번호 불일치');
    const response=parseRiskResponse(raw);
    if(generation.current===id&&active.current)setResult({frame,response,latency:Math.round(performance.now()-started),id:frameId});
@@ -41,6 +41,6 @@ export function useServerAnalysis(paused:boolean){
   finally{clearTimeout(timer);if(controller.current===c)controller.current=null;}
  },[wantsFrame]);
  const captureError=useCallback((error:Error)=>{stop();setState('error');setMessage(error.message);},[stop]);
- return {url,setUrl,dummy,setDummy,confidence,setConfidence,state,message,result,paused,connect:()=>connect(),reset:()=>connect(true),stop,wantsFrame,onFrame,captureError};
+ return {url,setUrl,state,message,result,paused,connect:()=>connect(),reset:()=>connect(true),stop,wantsFrame,onFrame,captureError};
 }
 export type ServerAnalysis=ReturnType<typeof useServerAnalysis>;

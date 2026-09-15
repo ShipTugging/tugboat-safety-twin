@@ -15,12 +15,8 @@ test('URL permits HTTP(S) base paths but excludes credentials and queries',()=>{
  assert.equal(normalizeServerUrl('https://example.org/api/'),'https://example.org/api');
  for(const u of ['file:///tmp','https://user:secret@example.org','https://example.org?key=x','nonsense'])assert.throws(()=>normalizeServerUrl(u));
 });
-test('real inference does not send ground truth hints or client confidence',()=>{
- const frame={jpeg:'data:image/jpeg;base64,AA==',timestamp:123,rollDeg:4,rollRateDegS:2,sagRatio:.03,angleDeg:20,detached:false};
- const real=makeAnalyzeRequest(frame,'s:1',false,.9);
- assert.equal(real.image_base64,frame.jpeg);assert.equal(real.roll_rate_deg_s,2);
- assert.equal(real.frame_id,'s:1');assert.equal(real.captured_at_ms,123);
- assert.ok(!('confidence' in real));assert.ok(!('sag_ratio_hint' in real));
- const dummy=makeAnalyzeRequest({...frame,detached:true},'s:2',true,.9);
- assert.equal(dummy.confidence,0);assert.equal(dummy.sag_ratio_hint,.03);
+test('analysis sends only the CCTV image, IMU and frame metadata',()=>{
+ const frame={jpeg:'data:image/jpeg;base64,AA==',timestamp:123,rollDeg:4,rollRateDegS:2};
+ const request=makeAnalyzeRequest(frame,'s:1');
+ assert.deepEqual(request,{image_base64:frame.jpeg,roll_deg:4,roll_rate_deg_s:2,frame_id:'s:1',captured_at_ms:123});
 });

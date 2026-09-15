@@ -6,9 +6,7 @@ export function ServerAnalysisPanel({analysis:a}:{analysis:ServerAnalysis}){
  return <section className="server-analysis" aria-label="Python 서버 분석">
   <h3>Python 서버 분석</h3>
   <label>서버 주소<input aria-label="분석 서버 주소" value={a.url} disabled={locked} onChange={e=>a.setUrl(e.target.value)} placeholder="https://server.example.com"/></label>
-  <label><input type="checkbox" checked={a.dummy} disabled={locked} onChange={e=>a.setDummy(e.target.checked)}/>더미 서버 통신 테스트</label>
-  <p>{a.dummy?'현재 팀 서버: 이미지를 사용하지 않고 힌트로 마스크 생성':'서버 추론 모드: 정답 힌트 제외. 실제 YOLO 연결 여부는 서버에서 확인 필요'}</p>
-  {a.dummy&&<label>더미 신뢰도<select aria-label="더미 신뢰도" value={a.confidence} onChange={e=>a.setConfidence(Number(e.target.value))}><option value={.9}>0.9 · 비전·IMU</option><option value={.5}>0.5 · IMU 우선</option><option value={.2}>0.2 · IMU 단독</option></select></label>}
+  <p>실제 YOLO-Seg 추론 · CCTV 이미지와 IMU만 서버로 전송</p>
   <div className="risk-log-actions"><button onClick={locked?a.stop:a.connect} disabled={!locked&&a.paused}>{locked?'분석 중지':'연결·분석 시작'}</button><button onClick={a.reset} disabled={locked||a.paused}>서버 초기화</button></div>
   <p role="status">{a.paused?'데이터 생성 중 · 서버 전송 일시 중지':a.message}</p>
   {r&&a.result&&<>

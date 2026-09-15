@@ -8,9 +8,7 @@ TUGGUARD - 통합 파이프라인 서버 (강영한 담당)
 
 [Client] --POST(image, imu)--> [이 서버] --JSON--> [Client]
 
-image_base64가 오면 실제 YOLO 추론(run_yolo_seg)을 쓰고, 오지 않으면
-(예: 이미지 없이 구조만 검증하는 더미 테스트) sag_ratio_hint/angle_hint_deg
-기반 더미 mask(run_yolo_seg_dummy)로 폴백한다.
+/analyze는 image_base64를 필수로 받고 실제 YOLO 추론(run_yolo_seg)만 수행한다.
 """
 
 import base64
@@ -26,11 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from ultralytics import YOLO
 
-from risk_pipeline import (
-    generate_dummy_mask,
-    process_frame,
-    RiskStateClassifier,
-)
+from risk_pipeline import process_frame, RiskStateClassifier
 
 
 @asynccontextmanager
@@ -73,13 +67,9 @@ def get_model() -> YOLO:
 
 class FrameRequest(BaseModel):
     """클라이언트가 매 프레임 보내는 데이터 형태."""
-    image_base64: str | None = None   # data:image/jpeg;base64,... 또는 순수 base64
+    image_base64: str                 # data:image/jpeg;base64,... 또는 순수 base64
     roll_deg: float = 0.0
     roll_rate_deg_s: float = 0.0
-    confidence: float = 0.9           # image_base64 없이 더미 테스트할 때만 사용
-    # 더미 mask 생성용 (image_base64가 없을 때의 폴백 경로에서만 사용)
-    sag_ratio_hint: float = 0.15
-    angle_hint_deg: float = 30.0
 
 
 def decode_image_base64(image_base64: str) -> np.ndarray:
@@ -126,11 +116,6 @@ def run_yolo_seg(image: np.ndarray) -> tuple[np.ndarray | None, float]:
     return mask, confidence
 
 
-def run_yolo_seg_dummy(sag_ratio_hint: float, angle_hint_deg: float) -> np.ndarray:
-    """image_base64 없이 구조만 확인할 때 쓰는 힌트 기반 더미 mask (기존 동작 유지)."""
-    return generate_dummy_mask(sag_ratio_hint, angle_hint_deg)
-
-
 @app.get("/health")
 def health_check():
     """서버가 살아있는지 확인하는 용도. Three.js에서 연결 전 핑 날려보기 좋음."""
@@ -139,19 +124,10 @@ def health_check():
 
 @app.post("/analyze")
 def analyze_frame(req: FrameRequest):
-    """
-    클라이언트가 프레임마다 호출하는 메인 엔드포인트.
-    image_base64가 있으면 실제 YOLO-Seg 추론(run_yolo_seg)을 쓰고,
-    없으면 힌트 기반 더미 mask로 폴백한다.
-    """
+    """클라이언트 이미지에 실제 YOLO-Seg와 위험 파이프라인을 실행한다."""
     timestamp = round(time.time() - _start_time, 3)
-
-    if req.image_base64:
-        image = decode_image_base64(req.image_base64)
-        mask, confidence = run_yolo_seg(image)
-    else:
-        mask = run_yolo_seg_dummy(req.sag_ratio_hint, req.angle_hint_deg)
-        confidence = req.confidence
+    image = decode_image_base64(req.image_base64)
+    mask, confidence = run_yolo_seg(image)
 
     if mask is None:
         # towline 미검출: geometry 계산을 시도하지 않고 UNKNOWN으로 분류한다.
