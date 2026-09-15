@@ -2,6 +2,7 @@ import React from 'react';
 import { SimulationParams, ScenarioPreset, TowPosition } from '../types/maritime';
 import { TOW_POSITION_LABELS } from '../simulation/towPosition';
 import { maritimeAudio } from '../utils/audioSynthesizer';
+import { BOW_BASELINE } from './scenarioControlModel';
 import {
   Sliders,
   Volume2,
@@ -30,13 +31,13 @@ export const KOREAN_PRESETS: ScenarioPreset[] = [
     id: 'NORMAL_ESCORT',
     name: '정상 호위 모드',
     badge: '정상 안전',
-    description: '대형선 선미에서 18° 안정 결속 상태로 표준 예인 호위를 수행 중인 상태입니다.',
+    description: '대형선 선수에서 18° 안정 결속 상태로 표준 예인 호위를 수행 중인 상태입니다.',
     params: {
       tugSteeringAngle: 18,
       towLineLength: 32,
       shipSpeed: 6,
       propellerRpm: 45,
-      towPosition: 'astern',
+      towPosition: BOW_BASELINE.towPosition,
     },
   },
   {

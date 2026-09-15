@@ -11,18 +11,20 @@ import { useDatasetExporter } from './hooks/useDatasetExporter';
 import { randomizeEnvironment } from './dataset/environment';
 import { useRiskRecorder } from './hooks/useRiskRecorder';
 import { useServerAnalysis } from './hooks/useServerAnalysis';
+import { ScenarioControlDock } from './components/ScenarioControlDock';
+import { BOW_BASELINE } from './components/scenarioControlModel';
 
 const DEFAULT_PARAMS: SimulationParams = {
   tugSteeringAngle: 18,
   towLineLength: 32,
   shipSpeed: 6,
   propellerRpm: 45,
-  cameraMode: 'orbit',
+  cameraMode: BOW_BASELINE.cameraMode,
   timeOfDay: 'day',
   quickReleaseActive: false,
   soundEnabled: false,
   fogDensity: 0.0014,
-  towPosition: 'astern',
+  towPosition: BOW_BASELINE.towPosition,
 };
 
 export function App() {
@@ -168,11 +170,12 @@ export function App() {
         <section className="scene-column" aria-label="해양 디지털 트윈">
           <Scene3D params={activeSample?.params??params} telemetry={shownTelemetry} onUpdatePhysics={updatePhysics} onSelectCamera={handleSelectCamera} onSelectTimeOfDay={handleSelectTimeOfDay} captureSample={activeSample} captureBusy={operationBusy} datasetMode={dataset.enabled||!!riskRecorder.sample||serverAnalysis.state==='running'} liveCameraMode={params.cameraMode} onCaptureReady={dataset.setCaptureApi} sequencePlayback={!!riskRecorder.sample} serverAnalysis={serverAnalysis}/>
           <section className="scenario-dock" aria-label="시나리오 선택">
-            <div className="scenario-heading"><span className="eyebrow">SCENARIOS</span><button disabled={operationBusy} onClick={handleReset} title="기본값 복원"><RotateCcw size={13}/>초기화</button></div>
+            <div className="scenario-heading"><span className="eyebrow">SCENARIOS · BOW FIRST</span><button disabled={operationBusy} onClick={handleReset} title="기본값 복원"><RotateCcw size={13}/>초기화</button></div>
             <fieldset disabled={operationBusy} className="scenario-grid">{KOREAN_PRESETS.map((preset,index)=>{
               const active = Object.entries(preset.params).every(([key,value])=>params[key as keyof SimulationParams] === value) && !params.quickReleaseActive;
               return <button key={preset.id} className={'scenario-card '+(active?'active':'')} aria-pressed={active} onClick={()=>handleParamChange({...preset.params,quickReleaseActive:false})}><span className="scenario-number">0{index+1}</span><span className="scenario-name">{['정상 호위','거팅 위험','후류 진입','선체 근접'][index]}<small>{['SAFE ESCORT','GIRTING RISK','PROPELLER WASH','HULL SUCTION'][index]}</small></span><ArrowUpRight size={15}/></button>;
-            })}</fieldset>
+              })}</fieldset>
+            <ScenarioControlDock params={params} onChangeParams={handleParamChange} onReset={handleReset} onTriggerQuickRelease={handleTriggerQuickRelease} analysis={serverAnalysis}/>
           </section>
         </section>
         {!is3DFullscreen && <Dashboard params={activeSample?.params??params} telemetry={shownTelemetry} onChangeParams={handleParamChange} onReset={handleReset} onTriggerQuickRelease={handleTriggerQuickRelease} onOpenVerificationModal={()=>setIsVerificationModalOpen(true)} onToggleSound={handleToggleSound} dataset={dataset} onRandomize={()=>handleParamChange(randomizeEnvironment())} riskRecorder={riskRecorder} serverAnalysis={serverAnalysis}/>}
