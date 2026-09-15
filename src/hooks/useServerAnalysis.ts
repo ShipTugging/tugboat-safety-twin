@@ -18,7 +18,8 @@ export function useServerAnalysis(paused:boolean){
   stop();const id=generation.current,c=new AbortController();controller.current=c;setState('connecting');setMessage(reset?'서버 초기화 중':'서버 연결 확인 중');
   const timer=setTimeout(()=>c.abort(),5000);
   try{
-   if(!sessionId.current)sessionId.current=crypto.randomUUID();
+   // getRandomValues also works on HTTP LAN pages where randomUUID is unavailable.
+   if(!sessionId.current)sessionId.current='web-'+Array.from(crypto.getRandomValues(new Uint8Array(16)),n=>n.toString(16).padStart(2,'0')).join('');
    const base=normalizeServerUrl(config.current.url);
    const health=await request(base,reset?'/reset':'/health',c.signal,reset?{session_id:sessionId.current}:undefined);
    if(health.status!==(reset?'reset':'ok'))throw Error('서버 상태 응답 형식 오류');
