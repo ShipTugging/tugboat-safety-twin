@@ -5,6 +5,7 @@ export interface RiskResponse {
  roll_deg:number;roll_rate_deg_s:number;risk_state:typeof RISK_STATES[number];
 }
 export interface AnalysisFrame {jpeg:string;timestamp:number;rollDeg:number;rollRateDegS:number}
+export function fusionLabel(mode:RiskResponse['fusion_mode']):string { return mode??'관측 불가'; }
 export function normalizeServerUrl(value:string):string {
  const u=new URL(value.trim());
  if(!['http:','https:'].includes(u.protocol)||u.username||u.password||u.search||u.hash)throw Error('HTTP(S) 서버 주소만 입력하세요. 인증정보·쿼리는 포함할 수 없습니다.');

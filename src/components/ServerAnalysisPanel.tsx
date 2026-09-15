@@ -1,4 +1,5 @@
 import type {ServerAnalysis} from '../hooks/useServerAnalysis';
+import {fusionLabel} from '../server/protocol';
 const number=(v:number|null|undefined,digits=2)=>v==null?'관측 없음':v.toFixed(digits);
 const angle=(v:number|null)=>v===null?'관측 없음':`${number(v)}°`;
 export function ServerAnalysisPanel({analysis:a}:{analysis:ServerAnalysis}){
@@ -12,7 +13,7 @@ export function ServerAnalysisPanel({analysis:a}:{analysis:ServerAnalysis}){
   {r&&a.result&&<>
    <div className={'server-risk '+(a.state==='running'&&!a.paused?r.risk_state:'is-stale')}>서버 판정 · {r.risk_state}{a.state!=='running'||a.paused?' · 마지막 결과':''}</div>
    <img src={a.result.frame.jpeg} alt="이 서버 응답에 대응하는 예인선 CCTV 입력 이미지"/>
-   <p>프레임 {a.result.id} · 왕복 {a.result.latency}ms · {r.fusion_mode}</p>
+   <p>프레임 {a.result.id} · 왕복 {a.result.latency}ms · {fusionLabel(r.fusion_mode)}</p>
    <div className="server-metrics"><span>신뢰도 <b>{number(r.confidence)}</b></span><span>Sag <b>{number(r.sag_ratio,4)}</b></span><span>영상 각도 <b>{angle(r.towline_angle_pixel_deg)}</b></span><span>보정 각도 <b>{angle(r.towline_angle_corrected_deg)}</b></span><span>롤 <b>{number(r.roll_deg)}°</b></span><span>롤 속도 <b>{number(r.roll_rate_deg_s)}°/s</b></span></div>
    <details><summary>응답 JSON · 동기화 정보</summary><pre>{JSON.stringify({frame_id:a.result.id,captured_at_ms:a.result.frame.timestamp,...r},null,2)}</pre></details>
    <p>현 서버는 감지 마스크·판단 근거를 반환하지 않습니다. 시뮬레이션 관측값과 별도 판정입니다.</p>
