@@ -1,5 +1,7 @@
 # TUGGUARD FastAPI 서버
 
+현재 버전은 **prototype-temporal-v2.0**이다. 자세한 계산·관측 품질·정책 가정·검증 결과는 [위험 판단 V2](../docs/2026-09-16-risk-v2.md)에 정리했다. 실제 사고 확률을 출력하지 않는다.
+
 Three.js 시뮬레이터 또는 실시간 카메라 프레임을 받아 YOLO-Seg 예인줄 마스크와 IMU를 결합하고, 예인줄 처짐·각도·위험 상태를 JSON으로 반환하는 서버다.
 
 ```text
@@ -90,11 +92,13 @@ curl http://192.168.45.42:8000/health
 | 필드 | 필수 | 설명 |
 |---|---:|---|
 | `image_base64` | 예 | data URL 또는 순수 Base64 JPEG/이미지. 실제 YOLO-Seg 추론 입력이다. |
-| `roll_deg` | 아니오 | IMU 횡경사(deg). 기본값 `0`. |
-| `roll_rate_deg_s` | 아니오 | IMU 롤 속도(deg/s). 기본값 `0`. |
+| `roll_deg` | 예 | 해당 촬영 시점 IMU 횡경사(deg). |
+| `roll_rate_deg_s` | 예 | 해당 촬영 시점 IMU 롤 속도(deg/s). |
 | `frame_id`, `captured_at_ms` | 아니오 | 프론트엔드 프레임 상관관계용 메타데이터. 구버전 서버는 무시할 수 있다. |
 
 `confidence`, `sag_ratio_hint`, `angle_hint_deg` 같은 프론트 계산값은 받지 않는다. 이미지가 없으면 요청 검증 단계에서 거부한다.
+
+V2는 session_id(미지정 legacy), captured_at_ms 또는 timestamp_ms, frame_id, camera_context를 지원한다. 값이 없는 구버전 timestamp만 서버 도착 시각을 사용하며 clock 출처를 반환한다. 기존 각도 보정 필드 `towline_angle_corrected_deg`는 V2에서 null이고, 실제 3D 각도로 표시하지 않는다. `angle_delta_deg`는 초기 저운동 이미지 기준각 대비 편차다. 응답에 reason_codes, thresholds, policy_version, observation_status, geometry 품질 및 vision binary PNG가 추가된다. mask 좌표는 원본 영상과 같으며 foreground는 255다.
 
 정상적으로 예인줄이 검출된 응답:
 
@@ -105,19 +109,19 @@ curl http://192.168.45.42:8000/health
   "confidence": 0.914,
   "sag_ratio": 0.0534,
   "towline_angle_pixel_deg": 74.88,
-  "towline_angle_corrected_deg": -25.02,
+  "towline_angle_corrected_deg": null,
   "roll_deg": 21.3,
   "roll_rate_deg_s": 0.0,
   "risk_state": "Loaded"
 }
 ```
 
-예인줄이 검출되지 않은 응답은 `UNKNOWN`이다. 이는 안전하다는 뜻이 아니며, 관측이 없으므로 비전 값과 `fusion_mode`가 `null`이다.
+예인줄이 검출되지 않으면 observation_status=missing이며, 확인된 IMU 위험이 없을 때 UNKNOWN이다. 큰 횡경사가 지속되면 영상 없이도 Critical 등을 반환한다. 미검출은 안전을 의미하지 않는다. 비전 값은 null이며 fusion_mode는 imu_only다. 확인된 위험은 미검출만으로 해제하지 않는다.
 
 ```json
 {
   "timestamp": 5.017,
-  "fusion_mode": null,
+  "fusion_mode": "imu_only",
   "confidence": 0.0,
   "sag_ratio": null,
   "towline_angle_pixel_deg": null,
@@ -147,7 +151,7 @@ curl -X POST http://127.0.0.1:8000/reset \
   -d '{}'
 ```
 
-현재 판정기는 전역 하나이므로 단일 시연 세션을 기준으로 한다. 여러 선박·사용자가 동시에 접속하는 서비스에서는 `session_id`별 판정기와 인증을 별도로 설계해야 한다.
+V2 판정기는 session_id별로 분리된다. 초기화 body의 session_id가 가리키는 이력만 지운다. 미지정 구버전 요청은 공용 legacy 세션을 사용한다. 동시 요청은 세션당 하나이고 공유 모델 추론은 직렬화한다. 다중 사용자 운영 인증은 별도 설계가 필요하다.
 
 ## 프론트엔드에서 사용
 

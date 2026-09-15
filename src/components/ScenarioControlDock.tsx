@@ -25,7 +25,8 @@ function NumericControl({ control, label, value, quick, onChange, disabled }: { 
 }
 
 export function ScenarioControlDock({ params, onChangeParams, onReset, onTriggerQuickRelease, analysis }: { params: SimulationParams; onChangeParams: (next: Partial<SimulationParams>) => void; onReset: () => void; onTriggerQuickRelease: () => void; analysis: ServerAnalysis }) {
-  const locked = analysis.state === 'running' || analysis.state === 'connecting' || analysis.paused;
+  const locked = analysis.paused;
+  const connected=analysis.state==='running'||analysis.state==='connecting';
   const result = analysis.result?.response;
   const statusLabel = analysis.state === 'running' ? '연결됨' : analysis.state === 'connecting' ? '연결 중' : analysis.state === 'error' ? '오류' : '대기';
   const setNumber = (control: NumericScenarioControl, value: number) => onChangeParams({ [control]: clampScenarioValue(control, value) } as Partial<SimulationParams>);
@@ -44,13 +45,13 @@ export function ScenarioControlDock({ params, onChangeParams, onReset, onTrigger
       <NumericControl control="propellerRpm" label="추진기 RPM" value={params.propellerRpm} quick={[0, 45, 80, 115]} disabled={locked} onChange={value => setNumber('propellerRpm', value)} />
     </div>
     <div className="scenario-server-glance">
-      <div className="scenario-server-main"><span><Server size={14} />PYTHON / YOLO-Seg</span><strong className={`server-glance-status ${analysis.state}`}>{statusLabel}</strong><input aria-label="선수 기준 분석 서버 주소" value={analysis.url} disabled={locked} onChange={event => analysis.setUrl(event.target.value)} /></div>
-      <div className="scenario-server-metric"><span>서버 판정</span><strong>{result ? (RISK_LABELS[result.risk_state] ?? result.risk_state) : '대기'}</strong></div>
+      <div className="scenario-server-main"><span><Server size={14} />PYTHON / YOLO-Seg</span><strong className={`server-glance-status ${analysis.state}`}>{statusLabel}</strong><input aria-label="선수 기준 분석 서버 주소" value={analysis.url} disabled={locked||connected} onChange={event => analysis.setUrl(event.target.value)} /></div>
+      <div className="scenario-server-metric"><span>{result&&(!connected||analysis.paused)?'마지막 서버 판정':'서버 판정'}</span><strong>{result ? (RISK_LABELS[result.risk_state] ?? result.risk_state) : '대기'}</strong></div>
       <div className="scenario-server-metric"><span>융합</span><strong>{result ? fusionLabel(result.fusion_mode) : '—'}</strong></div>
       <div className="scenario-server-metric"><span>신뢰도</span><strong>{result ? `${(result.confidence * 100).toFixed(0)}%` : '—'}</strong></div>
       <div className="scenario-server-metric"><span>Sag</span><strong>{result?.sag_ratio == null ? '—' : result.sag_ratio.toFixed(4)}</strong></div>
       <div className="scenario-server-metric"><span>롤</span><strong>{result ? `${result.roll_deg.toFixed(1)}°` : '—'}</strong></div>
-      <div className="scenario-server-actions"><button type="button" disabled={analysis.paused} onClick={locked ? analysis.stop : analysis.connect}>{locked ? '중지' : '연결'}</button><button type="button" disabled={locked || analysis.paused} onClick={analysis.reset}>초기화</button></div>
+      <div className="scenario-server-actions"><button type="button" disabled={analysis.paused&&!connected} onClick={connected ? analysis.stop : analysis.connect}>{connected ? '중지' : '연결'}</button><button type="button" disabled={connected || analysis.paused} onClick={analysis.reset}>초기화</button></div>
     </div>
     <div className="scenario-control-footer"><span><Gauge size={13} />현재 {params.towLineLength}m · {params.shipSpeed}kn · {params.propellerRpm}RPM</span><span><Activity size={13} />{analysis.paused ? '데이터 생성 중 · 서버 전송 일시 중지' : analysis.message}</span><button type="button" className="scenario-release-button" disabled={locked || analysis.paused} onClick={onTriggerQuickRelease}><Unplug size={13} />{params.quickReleaseActive ? '예인줄 재연결' : '비상 분리'}</button></div>
   </section>;

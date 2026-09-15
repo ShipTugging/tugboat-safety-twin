@@ -24,3 +24,11 @@ test('analysis sends only the CCTV image, IMU and frame metadata',()=>{
  const request=makeAnalyzeRequest(frame,'s:1');
  assert.deepEqual(request,{image_base64:frame.jpeg,roll_deg:4,roll_rate_deg_s:2,frame_id:'s:1',captured_at_ms:123});
 });
+test('V2 accepts missing vision with IMU mode and validates diagnostic fields',()=>{
+ const r={...valid,risk_state:'UNKNOWN',policy_version:'prototype-temporal-v2.0',observation_status:'missing',reason_codes:['VISION_MISSING'],sag_ratio_rate_per_s:null};
+ assert.equal(parseRiskResponse(r).fusion_mode,'imu_only');
+ assert.throws(()=>parseRiskResponse({...r,reason_codes:[123]}));
+ assert.throws(()=>parseRiskResponse({...r,sag_ratio_rate_per_s:Infinity}));
+ const request=makeAnalyzeRequest({jpeg:'data:image/jpeg;base64,AA==',timestamp:1,rollDeg:0,rollRateDegS:0,cameraContext:'bow'},'frame','session');
+ assert.equal(request.session_id,'session');assert.equal(request.camera_context,'bow');
+});

@@ -15,7 +15,8 @@ export function ServerCaptureBridge({params,telemetry,analysis}:{params:Simulati
    applyDatasetCamera(captureCamera,p,telemetry,16/9);
    gl.setPixelRatio(1);gl.setSize(960,540,false);scene.updateMatrixWorld(true);gl.render(scene,captureCamera);
    const jpeg=encodeDatasetJpeg(gl.domElement,p);
-   void analysis.onFrame({jpeg,timestamp:telemetry.timestamp,rollDeg:telemetry.imuRollDeg,rollRateDegS:telemetry.imuRollRateDegS});
+   const cameraContext=JSON.stringify({mount:'TUG_SAG_CAM',position:p.towPosition??'astern',fov:p.cameraFov??60,jitter:p.cameraJitter,rotation:p.cameraRotationJitter});
+   void analysis.onFrame({jpeg,timestamp:telemetry.timestamp,rollDeg:telemetry.imuRollDeg,rollRateDegS:telemetry.imuRollRateDegS,cameraContext});
   }catch(e){analysis.captureError(e instanceof Error?e:Error('CCTV 캡처 실패'));}
   finally{gl.setPixelRatio(dpr);gl.setSize(size.x,size.y,false);gl.render(scene,camera);}
  },2);

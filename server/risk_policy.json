@@ -1,0 +1,23 @@
+{
+  "version": "prototype-temporal-v2.0",
+  "provenance": "Demonstration policy, not calibrated against real accidents. Vision evaluation metrics are not safety thresholds.",
+  "roll_risk_deg": 10.0,
+  "roll_developing_deg": 15.0,
+  "roll_critical_deg": 20.0,
+  "rising_roll_min_deg": 5.0,
+  "roll_rate_risk_deg_s": 2.0,
+  "roll_rate_developing_deg_s": 5.0,
+  "sag_loaded": 0.05,
+  "sag_fall_per_s": 0.05,
+  "angle_change_risk_deg": 30.0,
+  "angle_change_developing_deg": 56.0,
+  "confirm_s": 0.3,
+  "recovery_s": 2.0,
+  "history_s": 0.6,
+  "max_gap_s": 1.0,
+  "calibration_s": 1.0,
+  "calibration_max_roll_deg": 5.0,
+  "calibration_max_rate_deg_s": 1.0,
+  "calibration_angle_spread_deg": 4.0,
+  "max_sync_delta_ms": 50.0
+}

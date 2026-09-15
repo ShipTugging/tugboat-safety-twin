@@ -6,6 +6,7 @@ export function useServerAnalysis(paused:boolean){
  const [state,setState]=useState<'off'|'connecting'|'running'|'error'>('off'),[message,setMessage]=useState('서버 주소를 입력하고 연결하세요.');
  const [result,setResult]=useState<{frame:AnalysisFrame;response:RiskResponse;latency:number;id:string}|null>(null);
  const active=useRef(false),controller=useRef<AbortController|null>(null),generation=useRef(0),next=useRef(0),sequence=useRef(0);
+ const sessionId=useRef('');
  const config=useRef({url,paused});config.current={url,paused};
  const stop=useCallback(()=>{active.current=false;generation.current++;controller.current?.abort();controller.current=null;setState('off');setMessage('중지 · 마지막 수신 결과');},[]);
  useEffect(()=>()=>{active.current=false;generation.current++;controller.current?.abort();},[]);
@@ -17,8 +18,9 @@ export function useServerAnalysis(paused:boolean){
   stop();const id=generation.current,c=new AbortController();controller.current=c;setState('connecting');setMessage(reset?'서버 초기화 중':'서버 연결 확인 중');
   const timer=setTimeout(()=>c.abort(),5000);
   try{
+   if(!sessionId.current)sessionId.current=crypto.randomUUID();
    const base=normalizeServerUrl(config.current.url);
-   const health=await request(base,reset?'/reset':'/health',c.signal,reset?{}:undefined);
+   const health=await request(base,reset?'/reset':'/health',c.signal,reset?{session_id:sessionId.current}:undefined);
    if(health.status!==(reset?'reset':'ok'))throw Error('서버 상태 응답 형식 오류');
    if(generation.current!==id)return;
    setResult(null);sequence.current=0;next.current=0;
@@ -33,8 +35,10 @@ export function useServerAnalysis(paused:boolean){
   const frameId=`${id}:${++sequence.current}`,started=performance.now(),settings={...config.current};
   const timer=setTimeout(()=>c.abort(),5000);
   try{
-   const raw=await request(normalizeServerUrl(settings.url),'/analyze',c.signal,makeAnalyzeRequest(frame,frameId));
+   const raw=await request(normalizeServerUrl(settings.url),'/analyze',c.signal,makeAnalyzeRequest(frame,frameId,sessionId.current));
    if(raw.frame_id!==undefined&&raw.frame_id!==frameId)throw Error('응답 프레임 번호 불일치');
+   if(raw.session_id!==undefined&&raw.session_id!==sessionId.current)throw Error('응답 세션 불일치');
+   if(raw.captured_at_ms!==undefined&&raw.captured_at_ms!==frame.timestamp)throw Error('응답 촬영 시각 불일치');
    const response=parseRiskResponse(raw);
    if(generation.current===id&&active.current)setResult({frame,response,latency:Math.round(performance.now()-started),id:frameId});
   }catch(e){if(generation.current===id){active.current=false;setState('error');setMessage(c.signal.aborted?'응답 시간 초과 · 분석 중지':describeError(e));}}
