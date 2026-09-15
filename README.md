@@ -6,6 +6,66 @@
 - 기술: React 18 · TypeScript · Vite 5 · Three.js · React Three Fiber · Tailwind CSS
 - [Multimodal Recording V1](docs/MULTIMODAL_RECORDING_V1.md): shared simulation clock으로 24 FPS 영상과 100 Hz IMU를 기록하는 로컬 도구
 
+## 프론트엔드 + Python 서버
+
+이 저장소 하나만 클론하면 Three.js 시뮬레이터와 YOLO-Seg 위험 분석 서버를 함께 실행할 수 있다.
+
+```text
+Three.js / Vite :5173
+        │  POST /analyze (Base64 JPEG + IMU)
+        ▼
+FastAPI :8000 ── YOLO-Seg (server/models/best.pt)
+        │         + server/risk_pipeline.py
+        └──────── JSON 위험 상태 ───────▶ 관제 패널
+```
+
+서버는 관제 패널의 `CCTV · 예인줄 감시(Sag)` 시점에서 캡처한 960×540 이미지를 최대 5fps로 분석한다. 이미지가 있으면 실제 `server/models/best.pt`를 사용하고, 이미지 없이 요청하면 통신 계약 확인용 더미 마스크로 폴백한다. 서버 연동의 상세 API와 장애 대응은 [server/README.md](server/README.md)에 정리했다.
+
+## 빠른 시작
+
+권장 환경은 Node.js 18 이상(가능하면 20 LTS)과 Python 3.10 이상이다. 프론트엔드와 Python 서버를 각각 터미널에서 실행한다.
+
+### 1. 프론트엔드
+
+```sh
+npm ci
+npm run dev -- --host 0.0.0.0
+```
+
+브라우저에서 [http://localhost:5173](http://localhost:5173)을 연다.
+
+### 2. YOLO-Seg 서버
+
+저장소 루트에서 실행한다. 첫 설치는 PyTorch·Ultralytics 때문에 시간이 걸릴 수 있다.
+
+```sh
+python3 -m venv server/.venv
+source server/.venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r server/requirements.txt
+python server/integration_server.py
+```
+
+서버는 `0.0.0.0:8000`에서 시작하며 기동 시 `server/models/best.pt`를 미리 로드한다. 다른 컴퓨터에서 프론트엔드를 열면 Python 서버 주소에 `http://<서버 컴퓨터의 LAN IP>:8000`을 입력한다. 서버 컴퓨터 자체의 브라우저라면 `http://127.0.0.1:8000`을 사용하면 된다.
+
+기동 확인:
+
+```sh
+curl http://127.0.0.1:8000/health
+```
+
+### 3. 화면에서 실제 분석 켜기
+
+1. 관제 패널의 **Python 서버 분석**에서 서버 기본 주소를 입력한다. `/analyze`까지 붙이지 않는다.
+2. 연결 확인만 할 때는 **더미 서버 통신 테스트**를 켠 채 **연결·분석 시작**을 누른다.
+3. 실제 YOLO-Seg 분석을 할 때는 더미 체크를 끄고 다시 연결한다. 이 모드에서는 정답용 `sag_ratio_hint`와 `angle_hint_deg`를 보내지 않는다.
+4. 카메라를 **CCTV · 예인줄 감시(Sag)**로 선택하고, 서버 판정·신뢰도·Sag·영상 각도·IMU 롤을 확인한다.
+5. 새 시나리오를 시작할 때는 **서버 초기화**를 눌러 최근 프레임 판정 이력을 비운다.
+
+시나리오 프리셋을 누르면 예인 위치가 함께 바뀔 수 있다. **선수·선미·좌현·우현** 중 원하는 위치를 시연에 사용할 때는 프리셋을 고른 다음 위치를 마지막에 다시 지정한다.
+
+추천 시연 순서는 `정상 호위 → 거팅 위험 → 비상 예인줄 분리`다. 같은 CCTV 화면에서 서버 응답이 `Normal/Loaded`에서 위험 상태로 변하는지 확인한 뒤, **예인줄 분리**를 실행해 미검출 응답 `UNKNOWN`도 확인한다. `UNKNOWN`은 정상 판정이 아니라 예인줄 관측 불가 상태다.
+
 ## 화면과 기능
 
 - 넓은 해양 장면, 접을 수 있는 관제 패널, 네 가지 시나리오를 고르는 하단 조작부
@@ -103,7 +163,15 @@ IMU는 실제 장비 측정이 아닌 노이즈 없는 모델 기반 합성값�
 
 ## 실행
 
-**Python 서버 연동:** 관제 패널의 **Python 서버 분석**에 서버 기본 주소를 입력하고 **연결·분석 시작**을 누릅니다. CCTV와 같은 순간의 롤·롤 속도를 `/analyze`에 보내고 응답을 표시합니다. 현재 팀 서버는 더미 마스크 버전이므로 **더미 서버 통신 테스트**를 유지하세요. 실제 모델 연결 후 해당 모드를 끄면 정답 힌트를 제외합니다. [연결 규격·검증 기록](docs/2026-09-13-server-integration.md)
+프론트엔드와 Python 서버를 함께 사용하는 전체 실행법은 위의 [빠른 시작](#빠른-시작)을 따른다. 브라우저는 CCTV와 같은 순간의 롤·롤 속도와 Base64 JPEG를 `/analyze`에 보내고, 서버가 반환한 위험 상태를 기존 시뮬레이션 경고와 별도로 표시한다. [연결 규격·검증 기록](docs/2026-09-13-server-integration.md)과 [서버 전용 사용법](server/README.md)도 참고한다.
+
+### 네트워크·브라우저 주의사항
+
+- 다른 컴퓨터에서 접속할 때 `127.0.0.1`은 그 컴퓨터 자신을 뜻한다. 서버 컴퓨터의 실제 LAN IP를 입력해야 한다.
+- 두 컴퓨터가 같은 Wi-Fi에 있어야 하며, 공용·게스트 Wi-Fi의 기기 간 통신 차단이 켜져 있으면 연결되지 않는다.
+- macOS 방화벽이 Python의 외부 수신을 막으면 `http://<서버 IP>:8000/health`가 다른 컴퓨터에서 응답하지 않는다.
+- Vercel처럼 HTTPS인 페이지에서 사설망의 HTTP 서버를 호출하면 Mixed Content 정책에 막힐 수 있다. 운영 환경은 API도 HTTPS로 제공한다.
+- 데모 서버의 CORS는 전체 origin을 허용한다. 운영 배포 전에는 `server/integration_server.py`의 `allow_origins`를 실제 프론트엔드 주소로 제한한다.
 
 예인줄 비전 테스트용 **20초·720p·30fps MP4**의 로컬 생성 절차는 [영상 생성 안내](docs/2026-09-13-towline-test-video.md)를 참고하세요. 학습 데이터와 동일한 탑승 카메라에서 각도·처짐을 연속 변화시키며, 이미지 600장을 렌더링한 뒤 MP4로 인코딩합니다.
 
@@ -116,7 +184,7 @@ npm run build
 npm run preview
 ```
 
-개발 서버 기본 포트는 5173입니다. 별도 API 키나 외부 모델 다운로드 없이 실행됩니다.
+개발 서버 기본 포트는 5173입니다. Python 서버를 사용하지 않는 장면·물리·데이터셋 기능은 Node.js만으로 실행됩니다. 실제 위험 분석 서버를 사용할 때는 `server/requirements.txt`의 패키지 설치와 `server/models/best.pt`가 필요합니다. 모델을 다른 파일로 바꾸려면 `TUGGUARD_MODEL_PATH=/absolute/path/to/best.pt python server/integration_server.py`로 실행합니다.
 
 ## 조작
 
@@ -135,7 +203,7 @@ npm run preview
 
 ## 데이터와 검증 범위
 
-이 프로젝트는 **시나리오 시뮬레이터**이며 실제 센서, 카메라, AI 추론, 선박 제어와 연결되어 있지 않습니다. 선박 명칭과 항만은 시각화를 위한 가상 설정입니다. 물리식과 위험 임계값은 교육·데모 목적이며 실제 운항 판단이나 인증을 대체하지 않습니다.
+이 프로젝트의 Three.js 장면은 **시나리오 시뮬레이터**이며 실제 센서·카메라 장비나 선박 제어에 직접 연결되지 않습니다. 저장소에 포함된 선택형 Python 서버는 시뮬레이터가 캡처한 CCTV 프레임과 합성 IMU를 받아 실제 YOLO-Seg 모델 추론과 위험 파이프라인을 실행합니다. 선박 명칭과 항만은 시각화를 위한 가상 설정이며, 물리식·모델·위험 임계값은 교육·데모 목적이고 실제 운항 판단이나 인증을 대체하지 않습니다.
 
 `npm test`는 실제 공용 물리 엔진, 처짐 모델과 여유 로프 역산, 단계 도달성, 폴리곤 투영, 카메라 프레이밍, 거품·아카이브를 검증합니다. 기존 `test:physics`는 계산식 복사본 검사로 유지합니다. 선체 근접 프리셋은 현재 엔진에서 약 12~13m 이격으로 나타나며 반드시 CRITICAL을 발생시키는 프리셋은 아닙니다.
 
@@ -151,6 +219,8 @@ npm run preview
 - [예인선 위치 확장 설계와 검증](docs/2026-09-09-tow-positions.md)
 - [전방향 데이터셋·물 튐 렌즈 검증](docs/2026-09-09-dataset-positions-lens.md)
 - [비전·IMU 동기 데이터 설계](docs/2026-09-09-vision-imu.md)
+- [Python 서버 연동 계약·검증](docs/2026-09-13-server-integration.md)
+- [Python 서버 설치·API 사용법](server/README.md)
 
 .env 및 API 키 등 민감정보는 저장소에 추가하거나 푸시하지 않습니다.
 

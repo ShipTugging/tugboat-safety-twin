@@ -6,6 +6,10 @@ test('legacy response retains missing vision values; rejects invalid states/numb
  assert.equal(parseRiskResponse(valid).sag_ratio,null);
  for(const patch of [{risk_state:'SAFE'},{confidence:2},{roll_deg:NaN},{sag_ratio:'0.1'},{fusion_mode:'other'},{timestamp:null}])assert.throws(()=>parseRiskResponse({...valid,...patch}));
 });
+test('real server no-detection response is accepted as UNKNOWN with no fusion mode',()=>{
+ const response={...valid,fusion_mode:null,confidence:0,sag_ratio:null,towline_angle_pixel_deg:null,towline_angle_corrected_deg:null,risk_state:'UNKNOWN'};
+ assert.equal(parseRiskResponse(response).risk_state,'UNKNOWN');
+});
 test('URL permits HTTP(S) base paths but excludes credentials and queries',()=>{
  assert.equal(normalizeServerUrl(' http://127.0.0.1:8000/ '),'http://127.0.0.1:8000');
  assert.equal(normalizeServerUrl('https://example.org/api/'),'https://example.org/api');

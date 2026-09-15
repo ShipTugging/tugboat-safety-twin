@@ -1,6 +1,6 @@
-export const RISK_STATES=['Normal','Loaded','GirtingRisk','Developing','Critical'] as const;
+export const RISK_STATES=['Normal','Loaded','GirtingRisk','Developing','Critical','UNKNOWN'] as const;
 export interface RiskResponse {
- timestamp:number;fusion_mode:'vision_imu_fused'|'imu_primary'|'imu_only';confidence:number;
+ timestamp:number;fusion_mode:'vision_imu_fused'|'imu_primary'|'imu_only'|null;confidence:number;
  sag_ratio:number|null;towline_angle_pixel_deg:number|null;towline_angle_corrected_deg:number|null;
  roll_deg:number;roll_rate_deg_s:number;risk_state:typeof RISK_STATES[number];
 }
@@ -15,7 +15,11 @@ export function parseRiskResponse(value:unknown):RiskResponse {
  const r=value as Record<string,unknown>;
  for(const key of ['timestamp','confidence','roll_deg','roll_rate_deg_s'])if(typeof r[key]!=='number'||!Number.isFinite(r[key]))throw Error(`서버 응답 ${key} 오류`);
  for(const key of ['sag_ratio','towline_angle_pixel_deg','towline_angle_corrected_deg'])if(r[key]!==null&&(typeof r[key]!=='number'||!Number.isFinite(r[key])))throw Error(`서버 응답 ${key} 오류`);
- if((r.confidence as number)<0||(r.confidence as number)>1||!RISK_STATES.includes(r.risk_state as RiskResponse['risk_state'])||!['vision_imu_fused','imu_primary','imu_only'].includes(String(r.fusion_mode)))throw Error('서버 상태 또는 신뢰도 형식 오류');
+ const riskState=r.risk_state as RiskResponse['risk_state'];
+ const fusionMode=r.fusion_mode;
+ const validFusionModes=['vision_imu_fused','imu_primary','imu_only'];
+ if((r.confidence as number)<0||(r.confidence as number)>1||!RISK_STATES.includes(riskState)||
+    (riskState==='UNKNOWN'?fusionMode!==null:!validFusionModes.includes(String(fusionMode))))throw Error('서버 상태 또는 신뢰도 형식 오류');
  return r as unknown as RiskResponse;
 }
 export function makeAnalyzeRequest(frame:AnalysisFrame,frameId:string,dummy:boolean,confidence:number){

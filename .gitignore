@@ -40,3 +40,9 @@ colab_yolo_v2/
 # Local multimodal recording sessions (video, frames and sensor exports).
 recordings/
 .venv-recording/
+
+# Python integration server local environment and runtime files.
+server/.venv/
+server/tugguard-env/
+__pycache__/
+*.pyc
