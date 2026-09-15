@@ -5,7 +5,7 @@ import { Scene3D } from './components/Scene3D';
 import { Dashboard } from './components/Dashboard';
 import { VerificationModal } from './components/VerificationModal';
 import { maritimeAudio } from './utils/audioSystem';
-import { Anchor, PanelRightClose, PanelRightOpen, Volume2, VolumeX, ShieldCheck, AlertTriangle, ArrowUpRight, RotateCcw, Unplug } from 'lucide-react';
+import { Anchor, PanelRightClose, PanelRightOpen, Volume2, VolumeX, ArrowUpRight, RotateCcw, Unplug } from 'lucide-react';
 import { KOREAN_PRESETS } from './components/ControlPanel';
 import { useDatasetExporter } from './hooks/useDatasetExporter';
 import { randomizeEnvironment } from './dataset/environment';
@@ -152,15 +152,12 @@ export function App() {
   }, [handleTriggerQuickRelease, handleSelectCamera, handleToggleSound, isVerificationModalOpen, operationBusy]);
 
   const shownTelemetry=activeSample?.telemetry??telemetry;
-  const critical = shownTelemetry.girtingStatus === 'CRITICAL' || shownTelemetry.suctionStatus === 'CRITICAL';
-  const warning = critical || shownTelemetry.inWashZone || shownTelemetry.girtingStatus === 'WARNING' || shownTelemetry.suctionStatus === 'WARNING';
   return (
     <div className="app-shell">
       <header className="app-header">
         <div className="brand" aria-label="TUG GUARD"><span className="brand-symbol"><Anchor size={22}/></span><span>TUG<span className="brand-light">GUARD</span><small>MARITIME INTELLIGENCE</small></span></div>
         <div className="header-divider"/>
         <div className="header-context"><span>해양 안전 디지털 트윈</span><small>항만 호위 운항 시뮬레이션</small></div>
-        <div className={'global-status '+(critical?'is-critical':warning?'is-warning':'')} role="status">{warning?<AlertTriangle size={15}/>:<ShieldCheck size={15}/>}<span>{critical?'위험 · 즉시 확인':warning?'주의 · 운항 확인':'안전 운항 중'}</span></div>
         <fieldset className="header-actions" disabled={operationBusy}>
           <button className="icon-button" onClick={handleToggleSound} aria-label={params.soundEnabled?'음향 끄기':'음향 켜기'} title="음향 (M)">{params.soundEnabled?<Volume2 size={17}/>:<VolumeX size={17}/>}</button>
           <button className="icon-button" onClick={()=>setIs3DFullscreen(!is3DFullscreen)} aria-label={is3DFullscreen?'관제 패널 열기':'관제 패널 접기'} title="관제 패널 (F)">{is3DFullscreen?<PanelRightOpen size={17}/>:<PanelRightClose size={17}/>}</button>

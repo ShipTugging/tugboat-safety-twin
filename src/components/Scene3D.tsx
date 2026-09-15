@@ -17,7 +17,7 @@ import { SAG_LEVEL_NAMES, computeSagMetrics, getTowlineAnchors } from '../simula
 import { TOW_POSITION_LABELS } from '../simulation/towPosition';
 import type { CaptureSample, SceneCaptureApi } from '../dataset/types';
 import type { V2CaptureHandler } from '../dataset/v2/capture';
-import { Camera, Layers, Sun, Sunset, Moon, Compass, AlertTriangle, SlidersHorizontal, Spline } from 'lucide-react';
+import { Camera, Layers, Sun, Sunset, Moon, Compass, SlidersHorizontal, Spline } from 'lucide-react';
 
 interface Scene3DProps {
   params: SimulationParams; telemetry: TelemetryState;
@@ -98,8 +98,6 @@ export function Scene3D({ params, telemetry, onUpdatePhysics, onSelectCamera, on
   const [analysis, setAnalysis] = useState(false);
   const [quality, setQuality] = useState<'standard'|'high'>('high');
   const girting = telemetry.girtingStatus === 'CRITICAL';
-  const suction = telemetry.suctionStatus === 'CRITICAL';
-  const hasAlert = girting || suction || telemetry.inWashZone;
   const tugRef=useRef<THREE.Group>(null), shipRef=useRef<THREE.Group>(null), ropeRef=useRef<THREE.Mesh>(null);
   const anchors=getTowlineAnchors(telemetry);
   const sag=computeSagMetrics(anchors.start,anchors.end,params.towLineLength,telemetry.lineTensionKn,telemetry.girtingStatus,params.ropeSlackM,params.ropeSagOverrideM);
@@ -122,7 +120,6 @@ export function Scene3D({ params, telemetry, onUpdatePhysics, onSelectCamera, on
       <fieldset disabled={captureBusy} className="time-switch" aria-label="시간대">{([{id:'day',label:'주간',icon:Sun},{id:'sunset',label:'황혼',icon:Sunset},{id:'night',label:'야간',icon:Moon}] as const).map(item=><button key={item.id} onClick={()=>onSelectTimeOfDay(item.id)} aria-pressed={params.timeOfDay===item.id} aria-label={item.label} title={item.label}><item.icon size={16}/></button>)}</fieldset>
     </div>
     <div className="scene-bottom">
-      {hasAlert && <div className={girting || suction ? 'scene-alert critical' : 'scene-alert'} role="status"><AlertTriangle size={16}/><span>{[girting && '거팅 위험 · 예인줄 분리 필요', suction && `흡인 위험 · 이격 ${telemetry.hullDistanceM.toFixed(1)}m`, telemetry.inWashZone && `후류 진입 · 난류 ${telemetry.washTurbulencePct}%`].filter(Boolean).join(' / ')}</span></div>}
       {analysis && <div className="analysis-legend"><span>분석 레이어</span><span>주황 5m · 청록 9m 이격선</span><span>점선: 후류 범위</span></div>}
       {!params.quickReleaseActive && <div className={'sag-chip level-'+sag.level} role="status" aria-label="예인줄 처짐"><Spline size={14}/><span>예인줄 Sag L{sag.level} · {SAG_LEVEL_NAMES[sag.level]}</span><b>{sag.sagRatio.toFixed(3)}</b><small>{sag.sagM.toFixed(2)} m / {sag.spanM.toFixed(1)} m</small></div>}
       <div className="scene-caption"><span><i/>ASD TUG · {TOW_POSITION_LABELS[params.towPosition??'astern']} 호위</span><span>선박 · 해양 운동 시뮬레이션</span></div>

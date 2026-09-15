@@ -17,7 +17,7 @@ export function ServerAnalysisPanel({analysis:a}:{analysis:ServerAnalysis}){
    <p>프레임 {a.result.id} · 왕복 {a.result.latency}ms · {r.fusion_mode}</p>
    <div className="server-metrics"><span>신뢰도 <b>{number(r.confidence)}</b></span><span>Sag <b>{number(r.sag_ratio,4)}</b></span><span>영상 각도 <b>{angle(r.towline_angle_pixel_deg)}</b></span><span>보정 각도 <b>{angle(r.towline_angle_corrected_deg)}</b></span><span>롤 <b>{number(r.roll_deg)}°</b></span><span>롤 속도 <b>{number(r.roll_rate_deg_s)}°/s</b></span></div>
    <details><summary>응답 JSON · 동기화 정보</summary><pre>{JSON.stringify({frame_id:a.result.id,captured_at_ms:a.result.frame.timestamp,...r},null,2)}</pre></details>
-   <p>현 서버는 감지 마스크·판단 근거를 반환하지 않습니다. 기존 시뮬레이션 경고와 별도 판정입니다.</p>
+   <p>현 서버는 감지 마스크·판단 근거를 반환하지 않습니다. 시뮬레이션 관측값과 별도 판정입니다.</p>
   </>}
   <small>최대 5fps · 전송 중 다음 요청 대기. 초기화는 서버의 공용 판정 이력을 지웁니다. 공개 사이트에는 HTTPS 서버 주소를 권장합니다.</small>
  </section>;
