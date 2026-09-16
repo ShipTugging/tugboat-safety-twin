@@ -50,7 +50,7 @@ export const KOREAN_PRESETS: ScenarioPreset[] = [
       towLineLength: 26,
       shipSpeed: 8.5,
       propellerRpm: 60,
-      towPosition: 'astern',
+      towPosition: BOW_BASELINE.towPosition,
     },
   },
   {

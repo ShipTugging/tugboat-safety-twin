@@ -7,7 +7,7 @@ interface Props {
   currentTelemetry:TelemetryState; onChangeParams:(params:Partial<SimulationParams>)=>void;
 }
 const scenarios = [
-  { name:'거팅 위험', params:{tugSteeringAngle:72,towLineLength:26,shipSpeed:8.5,propellerRpm:60,towPosition:'astern' as const,quickReleaseActive:false}},
+  { name:'거팅 위험', params:{tugSteeringAngle:72,towLineLength:26,shipSpeed:8.5,propellerRpm:60,towPosition:'ahead' as const,quickReleaseActive:false}},
   { name:'후류 진입', params:{tugSteeringAngle:4,towLineLength:28,shipSpeed:9,propellerRpm:115,towPosition:'astern' as const,quickReleaseActive:false}},
   { name:'선체 근접', params:{tugSteeringAngle:-22,towLineLength:14,shipSpeed:10,propellerRpm:50,towPosition:'astern' as const,quickReleaseActive:false}},
   { name:'예인줄 분리', params:{quickReleaseActive:true}},
