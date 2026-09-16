@@ -6,6 +6,7 @@ import type { SimulationParams } from '../src/types/maritime';
 const baseline: SimulationParams = {
   tugSteeringAngle: 18, towLineLength: 32, shipSpeed: 6, propellerRpm: 45,
   cameraMode: 'orbit', timeOfDay: 'day', quickReleaseActive: false, soundEnabled: false, fogDensity: 0.008,
+  towPosition: 'astern',
 };
 
 // Characterization values captured from the original live hook at timestamp 0.
@@ -32,6 +33,13 @@ test('preserves attachment positions and timestamp', () => {
   assert.deepEqual(result.lineStartPoint, [3.5, 2.6, -34]);
   assert.deepEqual(result.lineEndPoint, [12.740924826324909, 3.2511204723871114, -62.096764882468655]);
   assert.equal(result.timestamp, 0);
+});
+
+test('missing tow position uses the bow-first simulation baseline', () => {
+  const { towPosition: _towPosition, ...withoutPosition } = baseline;
+  const result = stepMaritimePhysics(withoutPosition, createPhysicsState(), 1 / 60, 0);
+  assert.deepEqual(result.lineStartPoint, [0, 6.8, 32]);
+  assert.ok(result.tugPosition[2] > result.lineStartPoint[2]);
 });
 
 test('quick release removes load immediately and damps existing roll', () => {

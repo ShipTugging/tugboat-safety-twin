@@ -66,7 +66,7 @@ function CameraController({ params, telemetry, onUpdatePhysics, captureBusy, cap
         const scale = size.width / size.height < 1 ? 1.45 : 1;
         const center=new THREE.Vector3((telemetry.shipPosition[0]+x)/2,3,(telemetry.shipPosition[2]+z)/2);
         const offsets={astern:[76,48,-75],port:[-75,48,-76],starboard:[75,48,76],ahead:[-76,48,75]} as const;
-        const offset=offsets[params.towPosition??'astern'];
+        const offset=offsets[params.towPosition??'ahead'];
         camera.position.set(center.x+offset[0]*scale,center.y+offset[1]*scale,center.z+offset[2]*scale);
         camera.lookAt(center);
         previousWidth.current=size.width;
@@ -122,7 +122,7 @@ export function Scene3D({ params, telemetry, onUpdatePhysics, onSelectCamera, on
     <div className="scene-bottom">
       {analysis && <div className="analysis-legend"><span>분석 레이어</span><span>주황 5m · 청록 9m 이격선</span><span>점선: 후류 범위</span></div>}
       {!params.quickReleaseActive && <div className={'sag-chip level-'+sag.level} role="status" aria-label="예인줄 처짐"><Spline size={14}/><span>예인줄 Sag L{sag.level} · {SAG_LEVEL_NAMES[sag.level]}</span><b>{sag.sagRatio.toFixed(3)}</b><small>{sag.sagM.toFixed(2)} m / {sag.spanM.toFixed(1)} m</small></div>}
-      <div className="scene-caption"><span><i/>ASD TUG · {TOW_POSITION_LABELS[params.towPosition??'astern']} 호위</span><span>선박 · 해양 운동 시뮬레이션</span></div>
+      <div className="scene-caption"><span><i/>ASD TUG · {TOW_POSITION_LABELS[params.towPosition??'ahead']} 호위</span><span>선박 · 해양 운동 시뮬레이션</span></div>
       <fieldset disabled={captureBusy} className="view-toolbar">
         <div className="camera-select"><Camera size={15}/><select aria-label="카메라 시점" value={params.cameraMode} onChange={e=>onSelectCamera(e.target.value as CameraMode)}><option value="orbit">자유 시점</option><option value="tugChase">예인선 추적</option><option value="bridgeView">선교 시점</option><option value="topDown">상공 시점</option><option value="cinematic">시네마틱</option><option value="TUG_AFT_DECK">CCTV · 선미 덱</option><option value="TUG_BRIDGE">CCTV · 조타실 80°</option><option value="TUG_SAG_CAM">CCTV · 예인줄 감시(Sag)</option></select></div>
         <button className="layer-button" aria-pressed={analysis} onClick={()=>setAnalysis(!analysis)}><Layers size={15}/><span>위험 분석</span></button>

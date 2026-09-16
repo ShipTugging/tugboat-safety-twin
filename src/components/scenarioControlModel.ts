@@ -1,4 +1,4 @@
-import type { CameraMode, SimulationParams } from '../types/maritime';
+import type { CameraMode, TowPosition } from '../types/maritime';
 
 export type NumericScenarioControl = 'tugSteeringAngle'|'towLineLength'|'shipSpeed'|'propellerRpm';
 export const SCENARIO_CONTROL_RANGES:Record<NumericScenarioControl,{min:number;max:number;step:number;unit:string}>={
@@ -7,7 +7,7 @@ export const SCENARIO_CONTROL_RANGES:Record<NumericScenarioControl,{min:number;m
   shipSpeed:{min:0,max:14,step:.5,unit:'kn'},
   propellerRpm:{min:0,max:120,step:5,unit:'RPM'},
 };
-export const BOW_BASELINE:Pick<SimulationParams,'towPosition'|'cameraMode'>={towPosition:'ahead',cameraMode:'TUG_SAG_CAM'};
+export const BOW_BASELINE:{towPosition:TowPosition;cameraMode:CameraMode}={towPosition:'ahead',cameraMode:'TUG_SAG_CAM'};
 export function clampScenarioValue(key:NumericScenarioControl,value:number):number{
   const range=SCENARIO_CONTROL_RANGES[key];
   if(!Number.isFinite(value))return range.min;

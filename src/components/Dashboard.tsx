@@ -49,7 +49,7 @@ export function Dashboard(props: DashboardProps) {
         {tab === 'overview' && <>
           <section className="vessel-card">
             <div className="section-label"><span>현재 호위 선박</span><ArrowUpRight size={15} /></div>
-            <h3>OCEAN MERIDIAN</h3><p>컨테이너선 <span>·</span> ASD 예인선 {TOW_POSITION_LABELS[params.towPosition??'astern']} 호위</p>
+            <h3>OCEAN MERIDIAN</h3><p>컨테이너선 <span>·</span> ASD 예인선 {TOW_POSITION_LABELS[params.towPosition??'ahead']} 호위</p>
             <div className="vessel-profile" aria-hidden="true"><svg viewBox="0 0 320 65"><path d="M15 43h275l-17 17H39L15 43Z" fill="#425f6c"/><path d="M15 43h275" stroke="#f2ad75" strokeWidth="2"/><path d="M36 42V17h25v25M40 17V11h16v6M45 11V3" stroke="#a0b8c2" fill="#7c959f"/>{[0,1,2,3,4,5,6,7].map(x=><g key={x}><rect x={72+x*24} y="30" width="22" height="11" rx="1" fill={x%3===0?'#bd7955':'#547887'}/><rect x={72+x*24} y="17" width="22" height="11" rx="1" fill={x%2===0?'#668f98':'#d0b793'}/></g>)}</svg></div>
             <div className="vessel-meta"><span>본선 속력<strong>{params.shipSpeed.toFixed(1)} <small>kn</small></strong></span><span>예인줄 길이<strong>{params.towLineLength} <small>m</small></strong></span><span>추진기<strong>{params.propellerRpm} <small>RPM</small></strong></span></div>
           </section>

@@ -55,11 +55,11 @@ export function stepMaritimePhysics(
   const shipPos: [number, number, number] = [0, Math.sin(now * 0.001) * 0.15, 0];
 
   // Calculate the matching chock, tug position and heading for all four
-  // operating sectors. Existing projects without the field stay astern.
+  // operating sectors. Missing values use the bow-first simulation baseline.
   const steerRad = (params.tugSteeringAngle * Math.PI) / 180;
   const baseDistance = Math.max(12, params.towLineLength);
   const targetY = 0.5 + Math.sin(now * 0.002) * 0.18;
-  const geometry=getTowGeometry(params.towPosition??'astern',params.tugSteeringAngle,baseDistance,shipPos,targetY);
+  const geometry=getTowGeometry(params.towPosition??'ahead',params.tugSteeringAngle,baseDistance,shipPos,targetY);
   const shipChock=geometry.shipChock;
   const [targetX,,targetZ]=geometry.tugPosition;
 

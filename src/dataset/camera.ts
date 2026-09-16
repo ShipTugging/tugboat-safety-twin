@@ -57,7 +57,7 @@ export function applyDatasetCamera(camera:PerspectiveCamera,params:SimulationPar
     const center=new Vector3().addVectors(new Vector3(...t.shipPosition),new Vector3(...t.tugPosition)).multiplyScalar(.5);
     center.y=3;
     const offsets={astern:[76,48,-75],port:[-80,60,-65],starboard:[80,60,65],ahead:[-70,60,95]} as const;
-    camera.position.copy(center).add(new Vector3(...offsets[params.towPosition??'astern'])).addScaledVector(jitter,30);
+    camera.position.copy(center).add(new Vector3(...offsets[params.towPosition??'ahead'])).addScaledVector(jitter,30);
     camera.fov=params.cameraFov??43;
     camera.lookAt(center);camera.updateMatrixWorld(true);
     const bounds=[new Vector3(-8,0,-40),new Vector3(8,24,40),new Vector3(-8,24,40),new Vector3(8,0,-40)].map(p=>p.add(new Vector3(...t.shipPosition)));

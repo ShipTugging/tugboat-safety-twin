@@ -176,15 +176,15 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           <span className="flex items-center gap-1.5 text-slate-200 font-medium">
             <Compass size={14} className="text-cyan-400" /> 예인 위치
           </span>
-          <span className="text-cyan-300">{TOW_POSITION_LABELS[params.towPosition??'astern']}</span>
+          <span className="text-cyan-300">{TOW_POSITION_LABELS[params.towPosition??BOW_BASELINE.towPosition]}</span>
         </div>
         <div className="grid grid-cols-2 gap-1.5" role="group" aria-label="예인선 위치">
           {(['astern','port','starboard','ahead'] as TowPosition[]).map(position=><button
             key={position}
             type="button"
-            aria-pressed={(params.towPosition??'astern')===position}
+            aria-pressed={(params.towPosition??BOW_BASELINE.towPosition)===position}
             onClick={()=>onChangeParams({towPosition:position,quickReleaseActive:false})}
-            className={`py-2 rounded border text-[10px] font-mono ${(params.towPosition??'astern')===position?'bg-cyan-500/20 text-cyan-200 border-cyan-400/60':'bg-slate-800/70 text-slate-400 border-slate-700 hover:text-slate-200'}`}
+            className={`py-2 rounded border text-[10px] font-mono ${(params.towPosition??BOW_BASELINE.towPosition)===position?'bg-cyan-500/20 text-cyan-200 border-cyan-400/60':'bg-slate-800/70 text-slate-400 border-slate-700 hover:text-slate-200'}`}
           >{TOW_POSITION_LABELS[position]}</button>)}
         </div>
       </div>

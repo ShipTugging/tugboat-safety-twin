@@ -31,7 +31,7 @@ export function App() {
   const [params, setParams] = useState<SimulationParams>(DEFAULT_PARAMS);
   const [isVerificationModalOpen, setIsVerificationModalOpen] = useState<boolean>(false);
   const [is3DFullscreen, setIs3DFullscreen] = useState<boolean>(false);
-  const dataset=useDatasetExporter(params.towPosition??'astern');
+  const dataset=useDatasetExporter(params.towPosition??BOW_BASELINE.towPosition);
   const riskRecorder=useRiskRecorder(params,dataset.busy);
   const operationBusy=dataset.busy||riskRecorder.busy;
   const serverAnalysis=useServerAnalysis(operationBusy);

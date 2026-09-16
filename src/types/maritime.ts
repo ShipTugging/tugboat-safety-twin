@@ -33,7 +33,7 @@ export interface SimulationParams {
   lensSeed?: number;
   /** Continuous experiment's dynamic sag, meters; absent in normal/dataset mode. */
   ropeSagOverrideM?: number;
-  /** Where the tug operates around the main vessel. Defaults to astern. */
+  /** Where the tug operates around the main vessel. Defaults to ahead (bow). */
   towPosition?: TowPosition;
 }
 
