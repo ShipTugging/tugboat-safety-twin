@@ -1,0 +1,11 @@
+.env
+.env.*
+server/
+node_modules/
+artifacts.local/
+recordings/
+.venv-recording/
+towline_dataset_v2/
+towline_yolo_seg_v2/
+colab_yolo_v2/
+.git/

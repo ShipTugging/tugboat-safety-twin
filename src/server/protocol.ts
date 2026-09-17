@@ -9,7 +9,7 @@ export interface RiskResponse {
  vision?:{towline_detected:boolean;mask_base64:string|null;mask_width:number;mask_height:number};
 }
 export interface AnalysisFrame {jpeg:string;timestamp:number;rollDeg:number;rollRateDegS:number;cameraContext?:string}
-export function fusionLabel(mode:RiskResponse['fusion_mode']):string { return mode??'관측 불가'; }
+export function fusionLabel(mode:RiskResponse['fusion_mode']):string { return mode===null?'판단할 정보 부족':({vision_imu_fused:'영상 + 기울기 센서',imu_primary:'기울기 센서 중심',imu_only:'기울기 센서만 사용'})[mode]; }
 export function normalizeServerUrl(value:string):string {
  const u=new URL(value.trim());
  if(!['http:','https:'].includes(u.protocol)||u.username||u.password||u.search||u.hash)throw Error('HTTP(S) 서버 주소만 입력하세요. 인증정보·쿼리는 포함할 수 없습니다.');
@@ -36,5 +36,7 @@ export function makeAnalyzeRequest(frame:AnalysisFrame,frameId:string,sessionId?
  return {image_base64:frame.jpeg,roll_deg:frame.rollDeg,roll_rate_deg_s:frame.rollRateDegS,frame_id:frameId,captured_at_ms:frame.timestamp,...(sessionId?{session_id:sessionId}:{}),...(frame.cameraContext?{camera_context:frame.cameraContext}:{})};
 }
 
-const REASONS:Record<string,string>={ROLL_CRITICAL:'큰 횡경사 지속',ROLL_DEVELOPING:'횡경사 증가',ROLL_RISK:'횡경사 주의',ROLL_RISING:'기울어지는 속도 증가',ROLL_RISING_FAST:'빠르게 기울어짐',SAG_LOADED:'예인줄이 팽팽함',RAPID_TIGHTENING:'처짐이 빠르게 감소',ANGLE_CHANGE:'초기 영상 각도에서 변화',ANGLE_AND_ROLL:'각도 변화와 횡경사 동반',VISION_MISSING:'예인줄 미검출',VISION_DEGRADED:'마스크 품질 부족',VISION_INVALID:'유효하지 않은 마스크',RISK_HELD:'기존 위험 유지 · 회복 확인 중',BASELINE_PENDING:'안정 구간에서 초기 각도 수집 중',TIMESTAMP_GAP:'촬영 간격 단절 · 변화율 재수집',CONFIRMING:'지속 여부 확인 중',WITHIN_POLICY:'현재 정책 기준 이내',CAMERA_CONTEXT_CHANGED:'카메라 조건 변경 · 초기 각도 재수집',SMALL_MASK:'예인줄이 작게 보임',CLIPPED_MASK:'화면 경계에 잘림',FRAGMENTED_MASK:'마스크가 여러 조각으로 분리',BRANCHED_CENTERLINE:'중심선 분기',SHORT_CHORD:'예인줄 길이 부족',LOW_CONFIDENCE:'감지 신뢰도 부족',NO_CENTERLINE:'중심선 없음',IMPLAUSIBLE_GEOMETRY:'형상 품질 부족'};
+const REASONS:Record<string,string>={ROLL_CRITICAL:'큰 배 기울기가 지속됩니다',ROLL_DEVELOPING:'배 기울기가 커졌습니다',ROLL_RISK:'배 기울기가 주의 기준을 넘었습니다',ROLL_RISING:'기울어지는 속도 증가',ROLL_RISING_FAST:'빠르게 기울어짐',SAG_LOADED:'예인줄이 팽팽함',RAPID_TIGHTENING:'줄이 빠르게 팽팽해지고 있습니다',ANGLE_CHANGE:'초기 영상 각도에서 변화',ANGLE_AND_ROLL:'각도 변화와 횡경사 동반',VISION_MISSING:'예인줄 미검출',VISION_DEGRADED:'마스크 품질 부족',VISION_INVALID:'유효하지 않은 마스크',RISK_HELD:'기존 위험 유지 · 회복 확인 중',BASELINE_PENDING:'안정 구간에서 초기 각도 수집 중',TIMESTAMP_GAP:'촬영 간격 단절 · 변화율 재수집',CONFIRMING:'지속 여부 확인 중',WITHIN_POLICY:'현재 정책 기준 이내',CAMERA_CONTEXT_CHANGED:'카메라 조건 변경 · 초기 각도 재수집',SMALL_MASK:'예인줄이 작게 보임',CLIPPED_MASK:'화면 경계에 잘림',FRAGMENTED_MASK:'마스크가 여러 조각으로 분리',BRANCHED_CENTERLINE:'중심선 분기',SHORT_CHORD:'예인줄 길이 부족',LOW_CONFIDENCE:'감지 신뢰도 부족',NO_CENTERLINE:'중심선 없음',IMPLAUSIBLE_GEOMETRY:'형상 품질 부족'};
 export const riskReasonLabel=(code:string)=>REASONS[code]??code;
+
+export const riskLabel=(state:RiskResponse['risk_state']):string=>({Normal:'정상',Loaded:'줄 팽팽함',GirtingRisk:'주의',Developing:'위험',Critical:'매우 위험',UNKNOWN:'판단할 정보 부족'})[state];

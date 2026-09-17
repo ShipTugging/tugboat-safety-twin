@@ -1,12 +1,12 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { SimulationParams, CameraMode, TimeOfDay } from './types/maritime';
 import { useMaritimePhysics } from './hooks/useMaritimePhysics';
 import { Scene3D } from './components/Scene3D';
 import { Dashboard } from './components/Dashboard';
 import { VerificationModal } from './components/VerificationModal';
 import { maritimeAudio } from './utils/audioSystem';
-import { Anchor, PanelRightClose, PanelRightOpen, Volume2, VolumeX, ArrowUpRight, RotateCcw, Unplug } from 'lucide-react';
-import { KOREAN_PRESETS } from './components/ControlPanel';
+import { Anchor, PanelRightClose, PanelRightOpen, Volume2, VolumeX, X, Unplug } from 'lucide-react';
+import { DemoPanel } from './components/DemoPanel';
 import { useDatasetExporter } from './hooks/useDatasetExporter';
 import { randomizeEnvironment } from './dataset/environment';
 import { useRiskRecorder } from './hooks/useRiskRecorder';
@@ -28,6 +28,9 @@ const DEFAULT_PARAMS: SimulationParams = {
 };
 
 export function App() {
+  const toolsDialog=useRef<HTMLDialogElement>(null);
+  const [toolsOpen,setToolsOpen]=useState(false);
+  useEffect(()=>{if(toolsOpen)toolsDialog.current?.showModal();else toolsDialog.current?.close();},[toolsOpen]);
   const [params, setParams] = useState<SimulationParams>(DEFAULT_PARAMS);
   const [isVerificationModalOpen, setIsVerificationModalOpen] = useState<boolean>(false);
   const [is3DFullscreen, setIs3DFullscreen] = useState<boolean>(false);
@@ -120,7 +123,7 @@ export function App() {
   // Keyboard shortcut listeners
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isVerificationModalOpen || operationBusy) return;
+      if (toolsOpen || isVerificationModalOpen || operationBusy) return;
       if (e.repeat || (e.target instanceof HTMLElement && (e.target.isContentEditable || e.target.closest('input, textarea, select, button, summary')))) return;
 
       if (e.code === 'Space') {
@@ -151,11 +154,11 @@ export function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleTriggerQuickRelease, handleSelectCamera, handleToggleSound, isVerificationModalOpen, operationBusy]);
+  }, [handleTriggerQuickRelease, handleSelectCamera, handleToggleSound, isVerificationModalOpen, operationBusy, toolsOpen]);
 
   const shownTelemetry=activeSample?.telemetry??telemetry;
   return (
-    <div className="app-shell">
+    <div className="app-shell demo-shell">
       <header className="app-header">
         <div className="brand" aria-label="TUG GUARD"><span className="brand-symbol"><Anchor size={22}/></span><span>TUG<span className="brand-light">GUARD</span><small>MARITIME INTELLIGENCE</small></span></div>
         <div className="header-divider"/>
@@ -163,24 +166,26 @@ export function App() {
         <fieldset className="header-actions" disabled={operationBusy}>
           <button className="icon-button" onClick={handleToggleSound} aria-label={params.soundEnabled?'음향 끄기':'음향 켜기'} title="음향 (M)">{params.soundEnabled?<Volume2 size={17}/>:<VolumeX size={17}/>}</button>
           <button className="icon-button" onClick={()=>setIs3DFullscreen(!is3DFullscreen)} aria-label={is3DFullscreen?'관제 패널 열기':'관제 패널 접기'} title="관제 패널 (F)">{is3DFullscreen?<PanelRightOpen size={17}/>:<PanelRightClose size={17}/>}</button>
-          <button className={'emergency-button '+(params.quickReleaseActive?'released':'')} onClick={handleTriggerQuickRelease}><Unplug size={16}/><span>{params.quickReleaseActive?'예인줄 재연결':'비상 분리'}</span><kbd>SPACE</kbd></button>
+          <button className={'emergency-button '+(params.quickReleaseActive?'released':'')} onClick={handleTriggerQuickRelease}><Unplug size={16}/><span>{params.quickReleaseActive?'예인줄 재연결':'예인줄 분리'}</span><kbd>SPACE</kbd></button>
         </fieldset>
       </header>
       <main className={'workspace '+(is3DFullscreen?'expanded':'')}>
         <section className="scene-column" aria-label="해양 디지털 트윈">
           <Scene3D params={activeSample?.params??params} telemetry={shownTelemetry} onUpdatePhysics={updatePhysics} onSelectCamera={handleSelectCamera} onSelectTimeOfDay={handleSelectTimeOfDay} captureSample={activeSample} captureBusy={operationBusy} datasetMode={dataset.enabled||!!riskRecorder.sample||serverAnalysis.state==='running'} liveCameraMode={params.cameraMode} onCaptureReady={dataset.setCaptureApi} sequencePlayback={!!riskRecorder.sample} serverAnalysis={serverAnalysis}/>
-          <section className="scenario-dock" aria-label="시나리오 선택">
-            <div className="scenario-heading"><span className="eyebrow">SCENARIOS · BOW FIRST</span><button disabled={operationBusy} onClick={handleReset} title="기본값 복원"><RotateCcw size={13}/>초기화</button></div>
-            <fieldset disabled={operationBusy} className="scenario-grid">{KOREAN_PRESETS.map((preset,index)=>{
-              const active = Object.entries(preset.params).every(([key,value])=>params[key as keyof SimulationParams] === value) && !params.quickReleaseActive;
-              return <button key={preset.id} className={'scenario-card '+(active?'active':'')} aria-pressed={active} onClick={()=>handleParamChange({...preset.params,quickReleaseActive:false})}><span className="scenario-number">0{index+1}</span><span className="scenario-name">{['정상 호위','거팅 위험','후류 진입','선체 근접'][index]}<small>{['SAFE ESCORT','GIRTING RISK','PROPELLER WASH','HULL SUCTION'][index]}</small></span><ArrowUpRight size={15}/></button>;
-              })}</fieldset>
-            <ScenarioControlDock params={params} onChangeParams={handleParamChange} onReset={handleReset} onTriggerQuickRelease={handleTriggerQuickRelease} analysis={serverAnalysis}/>
-          </section>
+
         </section>
-        {!is3DFullscreen && <Dashboard params={activeSample?.params??params} telemetry={shownTelemetry} onChangeParams={handleParamChange} onReset={handleReset} onTriggerQuickRelease={handleTriggerQuickRelease} onOpenVerificationModal={()=>setIsVerificationModalOpen(true)} onToggleSound={handleToggleSound} dataset={dataset} onRandomize={()=>handleParamChange(randomizeEnvironment())} riskRecorder={riskRecorder} serverAnalysis={serverAnalysis}/>}
+        {!is3DFullscreen && <DemoPanel analysis={serverAnalysis} params={params} onChange={handleParamChange} onReset={handleReset} onTools={()=>setToolsOpen(true)}/>}
+
       </main>
-      <footer className="app-footer"><span><i/>SIMULATION ACTIVE</span><span>실제 운항 판단용이 아닌 시나리오 시뮬레이터</span><span>TUG GUARD / 2026</span></footer>
+
+      <dialog aria-label="추가 도구" ref={toolsDialog} className="tools-dialog" onCancel={()=>setToolsOpen(false)} onClose={()=>setToolsOpen(false)}>
+        <header><div><h2>추가 도구</h2><p>고급 조절 / 데이터 생성 / 상세 센서</p></div><button autoFocus aria-label="추가 도구 닫기" onClick={()=>setToolsOpen(false)}><X size={20}/></button></header>
+        <div className="tools-content">
+          <ScenarioControlDock params={params} onChangeParams={handleParamChange} onReset={handleReset} onTriggerQuickRelease={handleTriggerQuickRelease} analysis={serverAnalysis}/>
+          <Dashboard params={activeSample?.params??params} telemetry={shownTelemetry} onChangeParams={handleParamChange} onReset={handleReset} onTriggerQuickRelease={handleTriggerQuickRelease} onOpenVerificationModal={()=>{setToolsOpen(false);setIsVerificationModalOpen(true);}} onToggleSound={handleToggleSound} dataset={dataset} onRandomize={()=>handleParamChange(randomizeEnvironment())} riskRecorder={riskRecorder} serverAnalysis={serverAnalysis}/>
+          {import.meta.env.DEV&&<a href="/scripts/video-capture.html" target="_blank" rel="noreferrer">영상 프레임 생성 도구 열기 (로컬 개발용)</a>}
+        </div>
+      </dialog>
       <VerificationModal isOpen={isVerificationModalOpen} onClose={()=>setIsVerificationModalOpen(false)} currentParams={params} currentTelemetry={telemetry} onChangeParams={handleParamChange}/>
     </div>
   );

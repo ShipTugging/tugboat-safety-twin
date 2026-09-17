@@ -11,8 +11,8 @@ test('real server no-detection response is accepted as UNKNOWN with no fusion mo
  assert.equal(parseRiskResponse(response).risk_state,'UNKNOWN');
 });
 test('no-detection fusion mode has a user-facing label',()=>{
- assert.equal(fusionLabel(null),'관측 불가');
- assert.equal(fusionLabel('imu_only'),'imu_only');
+ assert.equal(fusionLabel(null),'판단할 정보 부족');
+ assert.equal(fusionLabel('imu_only'),'기울기 센서만 사용');
 });
 test('URL permits HTTP(S) base paths but excludes credentials and queries',()=>{
  assert.equal(normalizeServerUrl(' http://127.0.0.1:8000/ '),'http://127.0.0.1:8000');

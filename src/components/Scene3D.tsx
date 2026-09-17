@@ -96,6 +96,7 @@ function CameraController({ params, telemetry, onUpdatePhysics, captureBusy, cap
 }
 export function Scene3D({ params, telemetry, onUpdatePhysics, onSelectCamera, onSelectTimeOfDay, captureSample, captureBusy, datasetMode, liveCameraMode, onCaptureReady,onV2Capture,sequencePlayback,serverAnalysis,recordingTime }: Scene3DProps) {
   const [analysis, setAnalysis] = useState(false);
+  const [controlsHidden,setControlsHidden]=useState(false);
   const [quality, setQuality] = useState<'standard'|'high'>('high');
   const girting = telemetry.girtingStatus === 'CRITICAL';
   const tugRef=useRef<THREE.Group>(null), shipRef=useRef<THREE.Group>(null), ropeRef=useRef<THREE.Mesh>(null);
@@ -115,20 +116,22 @@ export function Scene3D({ params, telemetry, onUpdatePhysics, onSelectCamera, on
       <DatasetCaptureBridge sample={captureSample} tug={tugRef} ship={shipRef} rope={ropeRef} onReady={onCaptureReady} onV2Capture={onV2Capture}/>
       {serverAnalysis&&<ServerCaptureBridge params={params} telemetry={telemetry} analysis={serverAnalysis}/>}
     </Canvas>
-    <div className="scene-top">
+    <div className="scene-top" hidden={controlsHidden}>
       <div className="scene-title"><span className="eyebrow">{captureBusy?'DATASET CAPTURE':'TUG GUARD'}</span></div>
       <fieldset disabled={captureBusy} className="time-switch" aria-label="시간대">{([{id:'day',label:'주간',icon:Sun},{id:'sunset',label:'황혼',icon:Sunset},{id:'night',label:'야간',icon:Moon}] as const).map(item=><button key={item.id} onClick={()=>onSelectTimeOfDay(item.id)} aria-pressed={params.timeOfDay===item.id} aria-label={item.label} title={item.label}><item.icon size={16}/></button>)}</fieldset>
     </div>
-    <div className="scene-bottom">
+    <button className="scene-hide" aria-expanded={!controlsHidden} onClick={()=>setControlsHidden(!controlsHidden)}>{controlsHidden?'조작 표시':'조작 숨기기'}</button>
+    <div className="scene-bottom" hidden={controlsHidden}>
       {analysis && <div className="analysis-legend"><span>분석 레이어</span><span>주황 5m · 청록 9m 이격선</span><span>점선: 후류 범위</span></div>}
       {!params.quickReleaseActive && <div className={'sag-chip level-'+sag.level} role="status" aria-label="예인줄 처짐"><Spline size={14}/><span>예인줄 Sag L{sag.level} · {SAG_LEVEL_NAMES[sag.level]}</span><b>{sag.sagRatio.toFixed(3)}</b><small>{sag.sagM.toFixed(2)} m / {sag.spanM.toFixed(1)} m</small></div>}
       <div className="scene-caption"><span><i/>ASD TUG · {TOW_POSITION_LABELS[params.towPosition??'ahead']} 호위</span><span>선박 · 해양 운동 시뮬레이션</span></div>
-      <fieldset disabled={captureBusy} className="view-toolbar">
-        <div className="camera-select"><Camera size={15}/><select aria-label="카메라 시점" value={params.cameraMode} onChange={e=>onSelectCamera(e.target.value as CameraMode)}><option value="orbit">자유 시점</option><option value="tugChase">예인선 추적</option><option value="bridgeView">선교 시점</option><option value="topDown">상공 시점</option><option value="cinematic">시네마틱</option><option value="TUG_AFT_DECK">CCTV · 선미 덱</option><option value="TUG_BRIDGE">CCTV · 조타실 80°</option><option value="TUG_SAG_CAM">CCTV · 예인줄 감시(Sag)</option></select></div>
-        <button className="layer-button" aria-pressed={analysis} onClick={()=>setAnalysis(!analysis)}><Layers size={15}/><span>위험 분석</span></button>
+      <div className="simple-views"><button disabled={captureBusy} aria-pressed={params.cameraMode==='TUG_SAG_CAM'} onClick={()=>onSelectCamera('TUG_SAG_CAM')}>CCTV 예인줄 감시</button><button disabled={captureBusy} aria-pressed={params.cameraMode==='orbit'} onClick={()=>onSelectCamera('orbit')}>전체 보기</button><span>AI 입력은 고정 CCTV</span></div>
+      <details className="scene-options"><summary>화면 설정</summary><fieldset disabled={captureBusy} className="view-toolbar">
+        <div className="camera-select"><Camera size={15}/><select aria-label="카메라 시점" value={params.cameraMode} onChange={e=>onSelectCamera(e.target.value as CameraMode)}><option value="orbit">자유 시점</option><option value="tugChase">예인선 추적</option><option value="bridgeView">선교 시점</option><option value="topDown">상공 시점</option><option value="cinematic">시네마틱</option><option value="TUG_AFT_DECK">CCTV 선미 덱</option><option value="TUG_BRIDGE">CCTV 조타실 80°</option><option value="TUG_SAG_CAM">CCTV 예인줄 감시</option></select></div>
+        <button className="layer-button" aria-pressed={analysis} onClick={()=>setAnalysis(!analysis)}><Layers size={15}/><span>물리 분석 표시</span></button>
         <button className="quality-button" onClick={()=>setQuality(quality === 'high' ? 'standard':'high')} aria-label={`화질: ${quality === 'high' ? '고품질':'기본'}`}><SlidersHorizontal size={14}/><span>{quality === 'high' ? '고품질':'기본 화질'}</span></button>
         <div className="compass-mark" title="월드 기준 북쪽 +Z"><Compass size={19}/><span>N</span></div>
-      </fieldset>
+      </fieldset></details>
     </div>
   </div>;
 }
