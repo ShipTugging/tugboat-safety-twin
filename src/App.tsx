@@ -5,7 +5,7 @@ import { Scene3D } from './components/Scene3D';
 import { Dashboard } from './components/Dashboard';
 import { VerificationModal } from './components/VerificationModal';
 import { maritimeAudio } from './utils/audioSystem';
-import { Anchor, PanelRightClose, PanelRightOpen, Volume2, VolumeX, X, Unplug } from 'lucide-react';
+import { PanelRightClose, PanelRightOpen, Volume2, VolumeX, X, Unplug } from 'lucide-react';
 import { AnalysisCamera } from './components/AnalysisCamera';
 import { DemoPanel } from './components/DemoPanel';
 import { useDatasetExporter } from './hooks/useDatasetExporter';
@@ -164,7 +164,7 @@ export function App() {
   return (
     <div className={"app-shell demo-shell mode-"+displayMode}>
       <header className="app-header">
-        <div className="brand" aria-label="TUG GUARD"><span className="brand-symbol"><Anchor size={22}/></span><span>TUG<span className="brand-light">GUARD</span><small>MARITIME INTELLIGENCE</small></span></div>
+        <div className="brand" aria-label="TUG GUARD"><img className="brand-tension" src="/brand/tension-mark.svg?v=white" alt="" width="48" height="39"/><span className="brand-wordmark">TUG GUARD</span></div>
         <div className="header-divider"/>
         <fieldset className="mode-switch" aria-label="화면 모드" disabled={operationBusy}>{([{id:'twin',name:'디지털 트윈'},{id:'service',name:'서비스'}] as const).map(mode=><button key={mode.id} aria-pressed={displayMode===mode.id} onClick={()=>{setDisplayMode(mode.id);setIs3DFullscreen(false);}}>{mode.name}</button>)}</fieldset>
         <fieldset className="header-actions" disabled={operationBusy}>

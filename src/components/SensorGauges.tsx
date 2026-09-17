@@ -51,8 +51,8 @@ export const SensorGauges: React.FC<SensorGaugesProps> = ({ telemetry }) => {
               style={{
                 transform: `rotate(${telemetry.lineAngleDeg - 45}deg)`,
                 bottom: '50%',
-                backgroundColor: isGirtingCritical ? '#ff1744' : isGirtingWarning ? '#ffb020' : '#00f0ff',
-                boxShadow: isGirtingCritical ? '0 0 10px #ff1744' : '0 0 6px #00f0ff',
+                backgroundColor: isGirtingCritical ? '#ff1744' : isGirtingWarning ? '#ffb020' : '#365e78',
+                boxShadow: isGirtingCritical ? '0 0 10px #ff1744' : '0 0 6px #365e78',
               }}
             />
 

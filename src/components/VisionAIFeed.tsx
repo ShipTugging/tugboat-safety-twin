@@ -41,9 +41,9 @@ export const VisionAIFeed: React.FC<VisionAIFeedProps> = ({ telemetry, sag, deta
         <div className="relative w-full h-20 bg-slate-950 rounded-lg border border-slate-800 overflow-hidden">
           <div className="absolute inset-0 scanlines opacity-60 z-10 pointer-events-none" />
           <svg viewBox="0 0 100 40" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
-            <line x1="8" y1="12" x2="92" y2="12" stroke="#334155" strokeDasharray="2 2" />
-            {!detached && <path d={`M8 12 Q50 ${12 + Math.min(26, sag.sagRatio * 260)} 92 12`} fill="none" stroke={sag.level >= 4 ? '#fbbf24' : sag.level <= 1 ? '#f87171' : '#22d3ee'} strokeWidth={1.6} />}
-            <circle cx="8" cy="12" r="1.6" fill="#94a3b8" /><circle cx="92" cy="12" r="1.6" fill="#94a3b8" />
+            <line x1="8" y1="12" x2="92" y2="12" stroke="#bbc7cf" strokeDasharray="2 2" />
+            {!detached && <path d={`M8 12 Q50 ${12 + Math.min(26, sag.sagRatio * 260)} 92 12`} fill="none" stroke={sag.level >= 4 ? '#fbbf24' : sag.level <= 1 ? '#f87171' : '#365e78'} strokeWidth={1.6} />}
+            <circle cx="8" cy="12" r="1.6" fill="#526876" /><circle cx="92" cy="12" r="1.6" fill="#526876" />
           </svg>
           <div className="absolute bottom-1.5 left-2 right-2 z-20 flex items-center justify-between font-mono text-[10px] text-slate-300">
             <span className="flex items-center gap-1.5"><Spline size={12} className="text-cyan-400" />SagRatio = 최대 처짐 / 양끝 거리</span>

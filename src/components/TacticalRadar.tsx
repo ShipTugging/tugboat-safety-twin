@@ -32,7 +32,7 @@ export const TacticalRadar: React.FC<TacticalRadarProps> = ({ telemetry, inWashZ
 
       // Fade clear for persistence phosphor trail
       ctx.shadowBlur = 0;
-      ctx.fillStyle = '#0d212b';
+      ctx.fillStyle = '#f7f8fa';
       ctx.fillRect(0, 0, w, h);
 
       // Advance radar sweep angle
@@ -43,14 +43,14 @@ export const TacticalRadar: React.FC<TacticalRadarProps> = ({ telemetry, inWashZ
       [20, 40, 60].forEach((r) => {
         ctx.beginPath();
         ctx.arc(cx, cy, r * scale, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(116, 185, 177, 0.18)';
+        ctx.strokeStyle = 'rgba(54, 94, 120, 0.18)';
         ctx.lineWidth = 1;
         ctx.setLineDash([3, 3]);
         ctx.stroke();
         ctx.setLineDash([]);
 
         // Ring label
-        ctx.fillStyle = 'rgba(116, 185, 177, 0.5)';
+        ctx.fillStyle = 'rgba(54, 94, 120, 0.5)';
         ctx.font = '9px monospace';
         ctx.fillText(`${r}m`, cx + r * scale - 18, cy - 3);
       });
@@ -61,7 +61,7 @@ export const TacticalRadar: React.FC<TacticalRadarProps> = ({ telemetry, inWashZ
       ctx.lineTo(cx, h - 10);
       ctx.moveTo(10, cy);
       ctx.lineTo(w - 10, cy);
-      ctx.strokeStyle = 'rgba(116, 185, 177, 0.15)';
+      ctx.strokeStyle = 'rgba(54, 94, 120, 0.15)';
       ctx.lineWidth = 1;
       ctx.stroke();
 
@@ -80,8 +80,8 @@ export const TacticalRadar: React.FC<TacticalRadarProps> = ({ telemetry, inWashZ
 
       // 3. Large Ship Blip (Post-Panamax Hull)
       ctx.save();
-      ctx.fillStyle = '#85b5b6';
-      ctx.shadowColor = '#85b5b6';
+      ctx.fillStyle = '#526876';
+      ctx.shadowColor = '#526876';
       ctx.shadowBlur = 0;
       // Hull centered at (cx, cy)
       const shipW = 14 * scale;
@@ -105,9 +105,9 @@ export const TacticalRadar: React.FC<TacticalRadarProps> = ({ telemetry, inWashZ
       ctx.beginPath();
       ctx.moveTo(shipChockX, shipChockY);
       ctx.lineTo(tugX, tugY);
-      ctx.strokeStyle = telemetry.girtingStatus === 'CRITICAL' ? '#ff1744' : '#bdccb4';
+      ctx.strokeStyle = telemetry.girtingStatus === 'CRITICAL' ? '#ff1744' : '#365e78';
       ctx.lineWidth = 2;
-      ctx.shadowColor = telemetry.girtingStatus === 'CRITICAL' ? '#ff1744' : '#bdccb4';
+      ctx.shadowColor = telemetry.girtingStatus === 'CRITICAL' ? '#ff1744' : '#365e78';
       ctx.shadowBlur = 0;
       if (!telemetry.emergencyReleaseTriggered) ctx.stroke();
       ctx.restore();
@@ -116,8 +116,8 @@ export const TacticalRadar: React.FC<TacticalRadarProps> = ({ telemetry, inWashZ
       ctx.save();
       ctx.translate(tugX, tugY);
       ctx.rotate(-telemetry.tugRotation[1]); // tug heading
-      ctx.fillStyle = telemetry.girtingStatus === 'CRITICAL' ? '#ff1744' : '#d3a079';
-      ctx.shadowColor = telemetry.girtingStatus === 'CRITICAL' ? '#ff1744' : '#d3a079';
+      ctx.fillStyle = telemetry.girtingStatus === 'CRITICAL' ? '#ff1744' : '#8e673a';
+      ctx.shadowColor = telemetry.girtingStatus === 'CRITICAL' ? '#ff1744' : '#8e673a';
       ctx.shadowBlur = 2;
       // Draw tugboat contour
       ctx.beginPath();
@@ -133,8 +133,8 @@ export const TacticalRadar: React.FC<TacticalRadarProps> = ({ telemetry, inWashZ
       const sweepX = cx + Math.cos(sweep) * 90 * scale;
       const sweepY = cy + Math.sin(sweep) * 90 * scale;
       const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 90 * scale);
-      grad.addColorStop(0, 'rgba(116, 185, 177, 0.4)');
-      grad.addColorStop(1, 'rgba(116, 185, 177, 0.0)');
+      grad.addColorStop(0, 'rgba(54, 94, 120, 0.4)');
+      grad.addColorStop(1, 'rgba(54, 94, 120, 0.0)');
       
       ctx.beginPath();
       ctx.moveTo(cx, cy);
@@ -147,7 +147,7 @@ export const TacticalRadar: React.FC<TacticalRadarProps> = ({ telemetry, inWashZ
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.lineTo(sweepX, sweepY);
-      ctx.strokeStyle = 'rgba(116, 185, 177, 0.9)';
+      ctx.strokeStyle = 'rgba(54, 94, 120, 0.9)';
       ctx.lineWidth = 1.5;
       ctx.stroke();
       ctx.restore();

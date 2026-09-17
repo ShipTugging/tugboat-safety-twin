@@ -54,11 +54,11 @@ export const TelemetryChart: React.FC<TelemetryChartProps> = ({ telemetry }) => 
       const pts = historyRef.current;
 
       // Dark background with faint sweep
-      ctx.fillStyle = '#060d17';
+      ctx.fillStyle = '#f7f8fa';
       ctx.fillRect(0, 0, w, h);
 
       // Draw Grid Ticks
-      ctx.strokeStyle = 'rgba(0, 240, 255, 0.08)';
+      ctx.strokeStyle = 'rgba(54, 94, 120, 0.08)';
       ctx.lineWidth = 1;
 
       // Horizontal lines
@@ -86,7 +86,7 @@ export const TelemetryChart: React.FC<TelemetryChartProps> = ({ telemetry }) => 
       ctx.beginPath();
       ctx.moveTo(0, centerY);
       ctx.lineTo(w, centerY);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      ctx.strokeStyle = 'rgba(54, 94, 120, 0.2)';
       ctx.setLineDash([2, 4]);
       ctx.stroke();
       ctx.setLineDash([]);
@@ -154,7 +154,7 @@ export const TelemetryChart: React.FC<TelemetryChartProps> = ({ telemetry }) => 
       };
 
       // Channel 1: Cable Tension kN (0 to 600 kN)
-      drawChannel((p) => p.tensionKn, 0, 600, '#00e676', '#00e676', 1.8);
+      drawChannel((p) => p.tensionKn, 0, 600, '#365e78', '#365e78', 1.8);
 
       // Channel 2: Line Angle (-90 to +90 deg)
       drawChannel((p) => p.lineAngle, -90, 90, '#f59e0b', '#f59e0b', 2.0);
