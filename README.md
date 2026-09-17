@@ -228,6 +228,8 @@ npm run preview
 
 ## 문서
 
+- [딥그린 UI 팔레트와 로고 후보](docs/2026-09-17-brand-palette.md)
+
 - [시연 UI 개선 기획안 — 배 화면 확대·오른쪽 조작·한국어 표현](docs/2026-09-17-demo-ui-plan.md)
 - [디자인 검토와 예상 문제](docs/2026-09-07-design-review.md)
 - [구현 계획](docs/2026-09-07-implementation-plan.md)
