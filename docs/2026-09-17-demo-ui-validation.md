@@ -14,3 +14,7 @@
 - 민감 환경 파일과 서버 모델·가상환경은 Vercel 업로드에서 제외.
 
 - 최종 npm test: 95개 통과. npm run build 통과. 기존 큰 번들 경고는 유지. 위험 전환·분리·회복 전체 시나리오와 데이터셋 전체 생성은 이번 UI 작업에서 재실행하지 않았다.
+
+## 배포 문제 해결
+
+첫 Vercel 배포에서 제외 패턴 server/가 src/server/protocol.ts까지 제외하여 TypeScript 빌드가 실패했다. 루트 기준 /server/로 수정해 Python 서버만 제외하고 프론트엔드 API 모듈을 포함한다.
