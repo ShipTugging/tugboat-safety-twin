@@ -34,6 +34,7 @@ interface Scene3DProps {
   /** Explicit seconds for the local recording renderer only. */
   recordingTime?:number;
   serverAnalysis?:ServerAnalysis;
+  controlsHidden?:boolean;
 }
 function CameraController({ params, telemetry, onUpdatePhysics, captureBusy, captureSample,sequencePlayback }: Pick<Scene3DProps, 'params'|'telemetry'|'onUpdatePhysics'|'captureBusy'|'captureSample'|'sequencePlayback'>) {
   const { camera, size } = useThree();
@@ -94,9 +95,8 @@ function CameraController({ params, telemetry, onUpdatePhysics, captureBusy, cap
   });
   return null;
 }
-export function Scene3D({ params, telemetry, onUpdatePhysics, onSelectCamera, onSelectTimeOfDay, captureSample, captureBusy, datasetMode, liveCameraMode, onCaptureReady,onV2Capture,sequencePlayback,serverAnalysis,recordingTime }: Scene3DProps) {
+export function Scene3D({ params, telemetry, onUpdatePhysics, onSelectCamera, onSelectTimeOfDay, captureSample, captureBusy, datasetMode, liveCameraMode, onCaptureReady,onV2Capture,sequencePlayback,serverAnalysis,recordingTime,controlsHidden=false }: Scene3DProps) {
   const [analysis, setAnalysis] = useState(false);
-  const [controlsHidden,setControlsHidden]=useState(false);
   const [quality, setQuality] = useState<'standard'|'high'>('high');
   const girting = telemetry.girtingStatus === 'CRITICAL';
   const tugRef=useRef<THREE.Group>(null), shipRef=useRef<THREE.Group>(null), ropeRef=useRef<THREE.Mesh>(null);
@@ -120,7 +120,6 @@ export function Scene3D({ params, telemetry, onUpdatePhysics, onSelectCamera, on
       <div className="scene-title"><span className="eyebrow">{captureBusy?'DATASET CAPTURE':'TUG GUARD'}</span></div>
       <fieldset disabled={captureBusy} className="time-switch" aria-label="시간대">{([{id:'day',label:'주간',icon:Sun},{id:'sunset',label:'황혼',icon:Sunset},{id:'night',label:'야간',icon:Moon}] as const).map(item=><button key={item.id} onClick={()=>onSelectTimeOfDay(item.id)} aria-pressed={params.timeOfDay===item.id} aria-label={item.label} title={item.label}><item.icon size={16}/></button>)}</fieldset>
     </div>
-    <button className="scene-hide" aria-expanded={!controlsHidden} onClick={()=>setControlsHidden(!controlsHidden)}>{controlsHidden?'조작 표시':'조작 숨기기'}</button>
     <div className="scene-bottom" hidden={controlsHidden}>
       {analysis && <div className="analysis-legend"><span>분석 레이어</span><span>주황 5m · 청록 9m 이격선</span><span>점선: 후류 범위</span></div>}
       {!params.quickReleaseActive && <div className={'sag-chip level-'+sag.level} role="status" aria-label="예인줄 처짐"><Spline size={14}/><span>예인줄 Sag L{sag.level} · {SAG_LEVEL_NAMES[sag.level]}</span><b>{sag.sagRatio.toFixed(3)}</b><small>{sag.sagM.toFixed(2)} m / {sag.spanM.toFixed(1)} m</small></div>}
