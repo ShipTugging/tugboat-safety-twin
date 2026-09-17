@@ -1,17 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { AnalysisCamera } from './AnalysisCamera';
 import type { ServerAnalysis } from '../hooks/useServerAnalysis';
 import type { SimulationParams } from '../types/maritime';
 import { fusionLabel, riskLabel, riskReasonLabel } from '../server/protocol';
 import { KOREAN_PRESETS } from './ControlPanel';
 import { clampScenarioValue, SCENARIO_CONTROL_RANGES, type NumericScenarioControl } from './scenarioControlModel';
 
-type Props = { analysis: ServerAnalysis; params: SimulationParams; onChange: (value: Partial<SimulationParams>) => void; onReset: () => void; onTools: () => void };
+type Props = { analysis: ServerAnalysis; params: SimulationParams; onChange: (value: Partial<SimulationParams>) => void; onReset: () => void; onTools: () => void; overview?: ReactNode };
 const controls: {key: NumericScenarioControl; label: string; values: number[]}[] = [
   {key:'tugSteeringAngle',label:'예인선 방향',values:[0,18,68,85]},
   {key:'towLineLength',label:'예인줄 길이',values:[20,32,55]},
   {key:'shipSpeed',label:'큰 배 속도',values:[0,6,10,14]},
 ];
-export function DemoPanel({analysis:a,params,onChange,onReset,onTools}:Props) {
+export function DemoPanel({analysis:a,params,onChange,onReset,onTools,overview}:Props) {
   const [settings,setSettings]=useState(false);
   const [age,setAge]=useState(0);
   useEffect(()=>{if(a.state==='error')setSettings(true);},[a.state]);
@@ -20,17 +21,14 @@ export function DemoPanel({analysis:a,params,onChange,onReset,onTools}:Props) {
   const active=a.state==='running'||a.state==='connecting';
   const fresh=a.state==='running'&&!a.paused&&age<3;
   const reason=['RISK_HELD','ROLL_CRITICAL','ROLL_RISING_FAST','ANGLE_AND_ROLL','ROLL_DEVELOPING','ROLL_RISING','RAPID_TIGHTENING','ROLL_RISK','ANGLE_CHANGE','SAG_LOADED','WITHIN_POLICY'].find(code=>r?.reason_codes?.includes(code));
-  const observation=!r?'분석 시작 후 표시':r.observation_status==='valid'?'예인줄 감지됨':r.vision?.towline_detected?'예인줄 감지 불안정':'예인줄 감지되지 않음';
+
   return <aside className="demo-panel" aria-label="실시간 분석과 조작">
     <div className="demo-heading"><h2>실시간 분석</h2><span className={'connection-dot '+a.state}>{a.paused?'일시 중지':a.state==='running'?'연결됨':a.state==='connecting'?'연결 중':a.state==='error'?'연결 오류':'연결 전'}</span></div>
     <section className={'demo-verdict '+(r&&fresh?r.risk_state:'idle')} aria-live="polite">
       <div><small>{r&&!fresh?`마지막 결과 / ${age}초 전`:'AI 위험 판단'}</small><strong>{r?riskLabel(r.risk_state):'분석 대기'}</strong></div>
       <p>{r?(reason?riskReasonLabel(reason):'판단에 필요한 정보를 확인하고 있습니다'):'서버를 연결하면 위험 상태를 확인할 수 있습니다.'}</p>
     </section>
-    <div className="demo-camera server-camera">
-      {a.result?<><img src={a.result.frame.jpeg} alt="AI가 분석한 예인줄 CCTV"/>{r?.vision?.mask_base64&&<div className="server-mask" role="img" aria-label="예인줄 감지 영역" style={{maskImage:`url(data:image/png;base64,${r.vision.mask_base64})`}}/>}</>:<div className="camera-placeholder"><span>예인줄 감지 영상</span><small>분석 시작 후 감지 영역이 표시됩니다</small></div>}
-      <span className="camera-caption">{observation}</span>
-    </div>
+    {overview?<div className="overview-preview" aria-label="실시간 3D 전체 보기">{overview}<span className="camera-caption">실시간 전체 보기</span></div>:<AnalysisCamera analysis={a}/>}
     <div className="demo-fusion">{r?fusionLabel(r.fusion_mode):'영상 + 기울기 센서'}<span>{a.result?`${a.result.latency} ms`:'고정 CCTV 입력'}</span></div>
     <div className="demo-metrics"><div><span>줄 처짐 비율</span><b>{r?.sag_ratio==null?'—':r.sag_ratio.toFixed(3)}</b></div><div><span>처짐 변화 /초</span><b>{r?.sag_ratio_rate_per_s==null?'—':r.sag_ratio_rate_per_s.toFixed(3)}</b></div><div><span>배 기울기</span><b>{r?`${r.roll_deg.toFixed(1)}°`:'—'}</b></div></div>
     <section className="demo-controls" aria-label="시연 조절">

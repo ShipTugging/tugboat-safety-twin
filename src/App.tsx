@@ -6,6 +6,7 @@ import { Dashboard } from './components/Dashboard';
 import { VerificationModal } from './components/VerificationModal';
 import { maritimeAudio } from './utils/audioSystem';
 import { Anchor, PanelRightClose, PanelRightOpen, Volume2, VolumeX, X, Unplug } from 'lucide-react';
+import { AnalysisCamera } from './components/AnalysisCamera';
 import { DemoPanel } from './components/DemoPanel';
 import { useDatasetExporter } from './hooks/useDatasetExporter';
 import { randomizeEnvironment } from './dataset/environment';
@@ -28,6 +29,7 @@ const DEFAULT_PARAMS: SimulationParams = {
 };
 
 export function App() {
+  const [displayMode,setDisplayMode]=useState<'twin'|'service'>('twin');
   const toolsDialog=useRef<HTMLDialogElement>(null);
   const [toolsOpen,setToolsOpen]=useState(false);
   useEffect(()=>{if(toolsOpen)toolsDialog.current?.showModal();else toolsDialog.current?.close();},[toolsOpen]);
@@ -147,34 +149,35 @@ export function App() {
         });
       } else if (e.key.toLowerCase() === 'm') {
         handleToggleSound();
-      } else if (e.key.toLowerCase() === 'f') {
+      } else if (e.key.toLowerCase() === 'f' && displayMode==='twin') {
         setIs3DFullscreen((prev) => !prev);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleTriggerQuickRelease, handleSelectCamera, handleToggleSound, isVerificationModalOpen, operationBusy, toolsOpen]);
+  }, [handleTriggerQuickRelease, handleSelectCamera, handleToggleSound, isVerificationModalOpen, operationBusy, toolsOpen, displayMode]);
 
   const shownTelemetry=activeSample?.telemetry??telemetry;
+  const scene=<Scene3D params={displayMode==='service'?{...(activeSample?.params??params),cameraMode:'orbit'}:(activeSample?.params??params)} telemetry={shownTelemetry} onUpdatePhysics={updatePhysics} onSelectCamera={handleSelectCamera} onSelectTimeOfDay={handleSelectTimeOfDay} captureSample={activeSample} captureBusy={operationBusy} datasetMode={dataset.enabled||!!riskRecorder.sample||serverAnalysis.state==='running'} liveCameraMode={displayMode==='service'?'orbit':params.cameraMode} onCaptureReady={dataset.setCaptureApi} sequencePlayback={!!riskRecorder.sample} serverAnalysis={serverAnalysis}/>;
   return (
-    <div className="app-shell demo-shell">
+    <div className={"app-shell demo-shell mode-"+displayMode}>
       <header className="app-header">
         <div className="brand" aria-label="TUG GUARD"><span className="brand-symbol"><Anchor size={22}/></span><span>TUG<span className="brand-light">GUARD</span><small>MARITIME INTELLIGENCE</small></span></div>
         <div className="header-divider"/>
-        <div className="header-context"><span>해양 안전 디지털 트윈</span><small>항만 호위 운항 시뮬레이션</small></div>
+        <fieldset className="mode-switch" aria-label="화면 모드" disabled={operationBusy}>{([{id:'twin',name:'디지털 트윈'},{id:'service',name:'서비스'}] as const).map(mode=><button key={mode.id} aria-pressed={displayMode===mode.id} onClick={()=>{setDisplayMode(mode.id);setIs3DFullscreen(false);}}>{mode.name}</button>)}</fieldset>
         <fieldset className="header-actions" disabled={operationBusy}>
           <button className="icon-button" onClick={handleToggleSound} aria-label={params.soundEnabled?'음향 끄기':'음향 켜기'} title="음향 (M)">{params.soundEnabled?<Volume2 size={17}/>:<VolumeX size={17}/>}</button>
-          <button className="icon-button" onClick={()=>setIs3DFullscreen(!is3DFullscreen)} aria-label={is3DFullscreen?'관제 패널 열기':'관제 패널 접기'} title="관제 패널 (F)">{is3DFullscreen?<PanelRightOpen size={17}/>:<PanelRightClose size={17}/>}</button>
+          <button className="icon-button" disabled={displayMode==='service'} onClick={()=>setIs3DFullscreen(!is3DFullscreen)} aria-label={is3DFullscreen?'관제 패널 열기':'관제 패널 접기'} title="관제 패널 (F)">{is3DFullscreen?<PanelRightOpen size={17}/>:<PanelRightClose size={17}/>}</button>
           <button className={'emergency-button '+(params.quickReleaseActive?'released':'')} onClick={handleTriggerQuickRelease}><Unplug size={16}/><span>{params.quickReleaseActive?'예인줄 재연결':'예인줄 분리'}</span><kbd>SPACE</kbd></button>
         </fieldset>
       </header>
       <main className={'workspace '+(is3DFullscreen?'expanded':'')}>
         <section className="scene-column" aria-label="해양 디지털 트윈">
-          <Scene3D params={activeSample?.params??params} telemetry={shownTelemetry} onUpdatePhysics={updatePhysics} onSelectCamera={handleSelectCamera} onSelectTimeOfDay={handleSelectTimeOfDay} captureSample={activeSample} captureBusy={operationBusy} datasetMode={dataset.enabled||!!riskRecorder.sample||serverAnalysis.state==='running'} liveCameraMode={params.cameraMode} onCaptureReady={dataset.setCaptureApi} sequencePlayback={!!riskRecorder.sample} serverAnalysis={serverAnalysis}/>
+          {displayMode==='twin'?scene:<AnalysisCamera analysis={serverAnalysis} large/>}
 
         </section>
-        {!is3DFullscreen && <DemoPanel analysis={serverAnalysis} params={params} onChange={handleParamChange} onReset={handleReset} onTools={()=>setToolsOpen(true)}/>}
+        {!is3DFullscreen && <DemoPanel overview={displayMode==='service'?scene:undefined} analysis={serverAnalysis} params={params} onChange={handleParamChange} onReset={handleReset} onTools={()=>setToolsOpen(true)}/>}
 
       </main>
 
